@@ -6,15 +6,15 @@ import plotly.graph_objects as go
 st.set_page_config(page_title='Portfolio Tracker', page_icon='📈', layout='wide')
 
 ASSETS = [
-    {'name': 'Savings', 'category': 'Savings', 'subcategory': 'Savings TR', 'bucket': 'Savings', 'pac': 0},
-    {'name': 'Core MSCI World', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 640},
-    {'name': 'AI & Big Data', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 0},
-    {'name': 'Physical Gold', 'category': 'ETF', 'subcategory': 'ETF Gold', 'bucket': 'Defensive', 'pac': 220},
-    {'name': 'Global Gov Bond', 'category': 'ETF', 'subcategory': 'ETF Bond', 'bucket': 'Defensive', 'pac': 52},
-    {'name': 'Core EUR Corp Bond', 'category': 'ETF', 'subcategory': 'ETF Bond', 'bucket': 'Defensive', 'pac': 54},
-    {'name': 'MSCI World Value', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 180},
-    {'name': 'MSCI EM', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 400},
-    {'name': 'Defence Tech', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 0},
+    {'name': 'Savings', 'category': 'Savings', 'subcategory': 'Savings', 'bucket': 'Savings', 'pac': 0, 'active': 'No'},
+    {'name': 'Core MSCI World', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 640, 'active': 'Yes'},
+    {'name': 'AI & Big Data', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 160, 'active': 'Yes'},
+    {'name': 'Physical Gold', 'category': 'ETF', 'subcategory': 'ETF Gold', 'bucket': 'Defensive', 'pac': 108, 'active': 'Yes'},
+    {'name': 'Global Gov Bond', 'category': 'ETF', 'subcategory': 'ETF Bond', 'bucket': 'Defensive', 'pac': 80, 'active': 'Yes'},
+    {'name': 'Core EUR Corp Bond', 'category': 'ETF', 'subcategory': 'ETF Bond', 'bucket': 'Defensive', 'pac': 108, 'active': 'Yes'},
+    {'name': 'MSCI World Value', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 180, 'active': 'Yes'},
+    {'name': 'MSCI EM', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 164, 'active': 'Yes'},
+    {'name': 'Defence Tech', 'category': 'ETF', 'subcategory': 'ETF Stock', 'bucket': 'Stocks', 'pac': 60, 'active': 'Yes'},
 ]
 
 MONTH_END_SEED = [
@@ -71,7 +71,7 @@ def month_sort_value(label: str) -> int:
     return (2000 + int(year)) * 100 + MONTH_MAP[month]
 
 
-def eur(value: float) -> str:
+def eur0(value: float) -> str:
     sign = '-' if value < 0 else ''
     value = abs(float(value))
     s = f'{value:,.0f}'
@@ -92,11 +92,18 @@ def seed_data():
     month_end_df = pd.DataFrame(MONTH_END_SEED, columns=['month', 'asset', 'value'])
     manual_df = pd.DataFrame(MANUAL_SEED, columns=['month', 'asset', 'amount'])
 
-    pac_df = assets_df[assets_df['category'] == 'ETF'][['name', 'pac']].copy()
-    pac_df.columns = ['asset', 'amount']
-    pac_df['month'] = 'Apr/26'
-    pac_df['mode'] = pac_df['amount'].apply(lambda x: 'Auto' if x > 0 else 'No')
-    pac_df = pac_df[['month', 'asset', 'mode', 'amount']]
+    pac_rows = []
+    for month in MONTHS:
+        if month_sort_value(month) >= month_sort_value('Apr/26'):
+            for _, row in assets_df[assets_df['category'] == 'ETF'].iterrows():
+                pac_rows.append({
+                    'month': month,
+                    'asset': row['name'],
+                    'mode': 'Auto' if float(row['pac']) > 0 else 'No',
+                    'amount': float(row['pac'])
+                })
+    pac_df = pd.DataFrame(pac_rows)
+
     return assets_df, month_end_df, manual_df, pac_df
 
 
@@ -115,11 +122,11 @@ pac_df = st.session_state.pac_df.copy()
 all_assets = assets_df['name'].tolist()
 etf_assets = assets_df.loc[assets_df['category'] == 'ETF', 'name'].tolist()
 
-title_col, filter_col = st.columns([6, 1.4])
-with title_col:
+# Tight top filter
+header_left, header_right = st.columns([8, 1.2])
+with header_left:
     st.title('Portfolio Tracker')
-    st.caption('Month end update, PAC confirmation, manual transactions and add ETF')
-with filter_col:
+with header_right:
     selected_month = st.selectbox(
         'Month',
         options=MONTHS,
@@ -127,28 +134,7 @@ with filter_col:
         label_visibility='collapsed'
     )
 
-with st.sidebar:
-    st.subheader('Quick actions')
-    st.write('1. Confirm PAC')
-    st.write('2. Add month end')
-    st.write('3. Add manual extra buy')
-    st.write('4. Add new ETF')
-
-for month in MONTHS:
-    if month_sort_value(month) >= month_sort_value('Apr/26'):
-        for _, row in assets_df[assets_df['category'] == 'ETF'].iterrows():
-            asset = row['name']
-            default_amount = float(row['pac'])
-            exists = ((pac_df['month'] == month) & (pac_df['asset'] == asset)).any()
-            if not exists:
-                pac_df.loc[len(pac_df)] = [
-                    month,
-                    asset,
-                    'Auto' if default_amount > 0 else 'No',
-                    default_amount
-                ]
-
-st.session_state.pac_df = pac_df
+st.caption('Month end update, PAC confirmation, manual transactions and add ETF')
 
 month_end_map = {(r.month, r.asset): float(r.value) for r in month_end_df.itertuples(index=False)}
 manual_map = manual_df.groupby(['month', 'asset'], dropna=False)['amount'].sum().to_dict() if not manual_df.empty else {}
@@ -198,15 +184,145 @@ summary_df = pd.DataFrame(rows)
 portfolio_total = float(summary_df['End Value'].sum())
 savings_total = float(summary_df.loc[summary_df['Category'] == 'Savings', 'End Value'].sum())
 etf_total = portfolio_total - savings_total
-monthly_flow = float(summary_df['Total Flow'].sum())
-etf_pnl = float(summary_df.loc[(summary_df['Category'] == 'ETF') & summary_df['PnL'].notna(), 'PnL'].sum())
+monthly_etf_transactions = float(summary_df.loc[summary_df['Category'] == 'ETF', 'Total Flow'].sum())
+etf_abs_perf = float(summary_df.loc[(summary_df['Category'] == 'ETF') & summary_df['PnL'].notna(), 'PnL'].sum())
 
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric('Portfolio Total', eur2(portfolio_total))
-c2.metric('ETF Total', eur2(etf_total))
-c3.metric('Savings', eur2(savings_total))
-c4.metric('Monthly Flow', eur2(monthly_flow))
-c5.metric('ETF PnL', eur2(etf_pnl))
+etf_prev_end = float(summary_df.loc[summary_df['Category'] == 'ETF', 'Prev End'].sum())
+etf_total_flow = float(summary_df.loc[summary_df['Category'] == 'ETF', 'Total Flow'].sum())
+etf_perf_pct = None
+if etf_prev_end > 0:
+    etf_perf_pct = etf_abs_perf / (etf_prev_end + etf_total_flow / 2) * 100
+
+# Cards
+st.markdown("""
+<style>
+.kpi-card {
+    background: #f7f7f8;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 16px 18px;
+    min-height: 95px;
+}
+.kpi-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+.kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+}
+.kpi-value-red {
+    font-size: 28px;
+    font-weight: 700;
+    color: #dc2626;
+}
+.kpi-value-green {
+    font-size: 28px;
+    font-weight: 700;
+    color: #16a34a;
+}
+</style>
+""", unsafe_allow_html=True)
+
+k1, k2, k3, k4, k5, k6 = st.columns(6)
+
+with k1:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">Portfolio Total</div>
+        <div class="kpi-value">{eur2(portfolio_total)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k2:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">ETF Total</div>
+        <div class="kpi-value">{eur2(etf_total)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k3:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">Savings</div>
+        <div class="kpi-value">{eur2(savings_total)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k4:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">Monthly ETF Transactions</div>
+        <div class="kpi-value">{eur2(monthly_etf_transactions)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k5:
+    cls = "kpi-value-green" if etf_abs_perf >= 0 else "kpi-value-red"
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">ETF Abs Performance</div>
+        <div class="{cls}">{eur2(etf_abs_perf)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k6:
+    perf_txt = "-" if etf_perf_pct is None else f"{etf_perf_pct:.1f}%"
+    cls = "kpi-value" if etf_perf_pct is None else ("kpi-value-green" if etf_perf_pct >= 0 else "kpi-value-red")
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">ETF % Performance</div>
+        <div class="{cls}">{perf_txt}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.write("")
+
+# Pie charts row
+p1, p2 = st.columns(2)
+
+with p1:
+    st.subheader('ETF vs Savings')
+    split_df = pd.DataFrame({
+        'Type': ['ETF', 'Savings'],
+        'Value': [etf_total, savings_total]
+    })
+    fig_split = px.pie(
+        split_df,
+        names='Type',
+        values='Value',
+        hole=0.58,
+        color='Type',
+        color_discrete_map={'ETF': '#1f2937', 'Savings': '#9ca3af'}
+    )
+    fig_split.update_traces(textinfo='percent')
+    fig_split.update_layout(
+        height=360,
+        margin=dict(l=10, r=10, t=10, b=10),
+        legend=dict(orientation='h', y=-0.12, x=0.2)
+    )
+    st.plotly_chart(fig_split, use_container_width=True)
+
+with p2:
+    st.subheader('ETF Split')
+    pie_df = summary_df[
+        (summary_df['Category'] == 'ETF') & (summary_df['End Value'] > 0)
+    ][['Asset', 'End Value']]
+    if not pie_df.empty:
+        fig_pie = px.pie(pie_df, names='Asset', values='End Value', hole=0.55)
+        fig_pie.update_traces(textinfo='percent')
+        fig_pie.update_layout(
+            height=360,
+            margin=dict(l=10, r=10, t=10, b=10),
+            legend=dict(orientation='h', y=-0.18, x=0)
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+# Portfolio trend large
+st.subheader('Portfolio Trend MoM')
 
 trend_rows = []
 for month in MONTHS[: selected_idx + 1]:
@@ -220,107 +336,122 @@ for month in MONTHS[: selected_idx + 1]:
 
 trend_df = pd.DataFrame(trend_rows)
 
-top_left, top_mid, top_right = st.columns([2.2, 1.1, 1.1])
+if not trend_df.empty:
+    line_color = '#16a34a'
+    if len(trend_df) >= 2 and trend_df.iloc[-1]['Total'] < trend_df.iloc[-2]['Total']:
+        line_color = '#dc2626'
 
-with top_left:
-    st.subheader('Portfolio Trend MoM')
+    fig_combo = go.Figure()
 
-    if not trend_df.empty:
-        line_color = '#16a34a'
-        if len(trend_df) >= 2 and trend_df.iloc[-1]['Total'] < trend_df.iloc[-2]['Total']:
-            line_color = '#dc2626'
-
-        fig_combo = go.Figure()
-
-        fig_combo.add_bar(
-            x=trend_df['Month'],
-            y=trend_df['Savings'],
-            name='Savings',
-            marker_color='#9ca3af',
-            text=[eur(v) for v in trend_df['Savings']],
-            textposition='inside'
-        )
-
-        fig_combo.add_bar(
-            x=trend_df['Month'],
-            y=trend_df['ETF'],
-            name='ETF',
-            marker_color='#111827',
-            text=[eur(v) for v in trend_df['ETF']],
-            textposition='inside'
-        )
-
-        fig_combo.add_trace(
-            go.Scatter(
-                x=trend_df['Month'],
-                y=trend_df['Total'],
-                mode='lines+markers+text',
-                name='Portfolio Total',
-                line=dict(color=line_color, width=3),
-                text=[eur(v) for v in trend_df['Total']],
-                textposition='top center'
-            )
-        )
-
-        fig_combo.update_layout(
-            barmode='stack',
-            height=430,
-            margin=dict(l=10, r=10, t=10, b=10),
-            legend=dict(orientation='h', y=1.08, x=0),
-            yaxis_title='',
-            xaxis_title=''
-        )
-
-        st.plotly_chart(fig_combo, use_container_width=True)
-
-with top_mid:
-    st.subheader('ETF vs Savings')
-    split_df = pd.DataFrame({
-        'Type': ['ETF', 'Savings'],
-        'Value': [etf_total, savings_total]
-    })
-    fig_split = px.pie(split_df, names='Type', values='Value', hole=0.58, color='Type',
-                       color_discrete_map={'ETF': '#111827', 'Savings': '#9ca3af'})
-    fig_split.update_traces(textinfo='percent+label')
-    fig_split.update_layout(height=430, margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
-    st.plotly_chart(fig_split, use_container_width=True)
-
-with top_right:
-    st.subheader('ETF Split')
-    pie_df = summary_df[
-        (summary_df['Category'] == 'ETF') & (summary_df['End Value'] > 0)
-    ][['Asset', 'End Value']]
-    if not pie_df.empty:
-        fig_pie = px.pie(pie_df, names='Asset', values='End Value', hole=0.55)
-        fig_pie.update_traces(textinfo='percent')
-        fig_pie.update_layout(height=430, margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-st.subheader('ETF Monthly Performance')
-
-perf_df = summary_df[
-    (summary_df['Category'] == 'ETF') & summary_df['Perf %'].notna()
-][['Asset', 'Perf %']].copy()
-
-if not perf_df.empty:
-    perf_df['Color'] = perf_df['Perf %'].apply(lambda x: '#16a34a' if x >= 0 else '#dc2626')
-
-    fig_bar = go.Figure()
-    fig_bar.add_bar(
-        x=perf_df['Asset'],
-        y=perf_df['Perf %'],
-        marker_color=perf_df['Color'],
-        text=[f'{x:.1f}%' for x in perf_df['Perf %']],
-        textposition='outside'
+    fig_combo.add_bar(
+        x=trend_df['Month'],
+        y=trend_df['ETF'],
+        name='ETF',
+        marker_color='#1f2937',
+        text=[eur0(v) for v in trend_df['ETF']],
+        textposition='inside'
     )
-    fig_bar.update_layout(
-        height=360,
+
+    fig_combo.add_bar(
+        x=trend_df['Month'],
+        y=trend_df['Savings'],
+        name='Savings',
+        marker_color='#9ca3af',
+        text=[eur0(v) for v in trend_df['Savings']],
+        textposition='inside'
+    )
+
+    fig_combo.add_trace(
+        go.Scatter(
+            x=trend_df['Month'],
+            y=trend_df['Total'],
+            mode='lines+markers+text',
+            name='Portfolio Total',
+            line=dict(color=line_color, width=3),
+            text=[eur0(v) for v in trend_df['Total']],
+            textposition='top center'
+        )
+    )
+
+    fig_combo.update_layout(
+        barmode='stack',
+        height=470,
         margin=dict(l=10, r=10, t=10, b=10),
-        showlegend=False,
+        legend=dict(orientation='h', y=1.08, x=0),
         yaxis_title='',
         xaxis_title=''
     )
-    st.plotly_chart(fig_bar, use_container_width=True)
+
+    st.plotly_chart(fig_combo, use_container_width=True)
+
+# Smaller monthly performance
+left_perf, right_spark = st.columns([1.3, 1.7])
+
+with left_perf:
+    st.subheader('ETF Monthly Performance')
+
+    perf_df = summary_df[
+        (summary_df['Category'] == 'ETF') & summary_df['Perf %'].notna()
+    ][['Asset', 'Perf %']].copy()
+
+    if not perf_df.empty:
+        fig_bar = go.Figure()
+        fig_bar.add_bar(
+            x=perf_df['Asset'],
+            y=perf_df['Perf %'],
+            marker_color=['#16a34a' if x >= 0 else '#dc2626' for x in perf_df['Perf %']],
+            text=[f'{x:.1f}%' for x in perf_df['Perf %']],
+            textposition='outside'
+        )
+        fig_bar.update_layout(
+            height=320,
+            margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=False,
+            yaxis_title='',
+            xaxis_title=''
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+with right_spark:
+    st.subheader('ETF 3M Sparkline')
+
+    spark_cols = st.columns(2)
+
+    for idx, asset in enumerate(etf_assets):
+        hist_months = MONTHS[max(0, selected_idx - 2): selected_idx + 1]
+        vals = []
+        for m in hist_months:
+            vals.append(month_end_map.get((m, asset), 0))
+
+        spark_df = pd.DataFrame({'Month': hist_months, 'Value': vals})
+        if len(spark_df) >= 2 and spark_df.iloc[-1]['Value'] >= spark_df.iloc[0]['Value']:
+            spark_color = '#dc2626'   # come richiesto da te
+        else:
+            spark_color = '#16a34a'   # come richiesto da te
+
+        with spark_cols[idx % 2]:
+            st.markdown(f"**{asset}**")
+            if spark_df['Value'].sum() > 0:
+                fig_spark = go.Figure()
+                fig_spark.add_trace(
+                    go.Scatter(
+                        x=spark_df['Month'],
+                        y=spark_df['Value'],
+                        mode='lines+markers',
+                        line=dict(color=spark_color, width=2),
+                        marker=dict(size=5, color=spark_color),
+                        showlegend=False
+                    )
+                )
+                fig_spark.update_layout(
+                    height=120,
+                    margin=dict(l=5, r=5, t=5, b=5),
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                    paper_bgcolor='white',
+                    plot_bgcolor='white'
+                )
+                st.plotly_chart(fig_spark, use_container_width=True)
 
 st.divider()
 
@@ -397,7 +528,7 @@ with pac_tab:
                     f'Amount - {asset}',
                     min_value=0.0,
                     value=float(amount_default),
-                    step=50.0,
+                    step=10.0,
                     format='%.2f',
                     key=f'amount_{pac_month}_{asset}'
                 )
@@ -438,7 +569,7 @@ with manual_tab:
             manual_asset = st.selectbox('ETF', options=etf_assets)
 
         with c3:
-            manual_amount = st.number_input('Amount', min_value=0.0, step=50.0, format='%.2f')
+            manual_amount = st.number_input('Amount', min_value=0.0, step=10.0, format='%.2f')
 
         add_manual = st.form_submit_button('Add transaction', use_container_width=True)
 
@@ -463,7 +594,7 @@ with asset_tab:
         with c2:
             first_month = st.selectbox('First month', options=MONTHS, index=MONTHS.index('Apr/26'))
             first_end_value = st.number_input('First end value', min_value=0.0, step=100.0, format='%.2f')
-            new_pac = st.number_input('Monthly PAC', min_value=0.0, step=50.0, format='%.2f')
+            new_pac = st.number_input('Monthly PAC', min_value=0.0, step=10.0, format='%.2f')
 
         add_etf = st.form_submit_button('Add ETF', use_container_width=True)
 
@@ -481,6 +612,7 @@ with asset_tab:
                     'subcategory': new_subcategory,
                     'bucket': new_bucket,
                     'pac': float(new_pac),
+                    'active': 'Yes'
                 }
 
                 month_end_df.loc[len(month_end_df)] = {
@@ -503,8 +635,6 @@ with asset_tab:
                 st.session_state.pac_df = pac_df
                 st.success(f'{cleaned_name} added to portfolio')
                 st.rerun()
-
-st.divider()
 
 with st.expander('Data tables'):
     st.write('Assets')
