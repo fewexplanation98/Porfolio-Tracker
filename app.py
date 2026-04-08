@@ -171,38 +171,40 @@ div[data-baseweb="tag"] {
     border-radius: 10px !important;
 }
 .kpi-card {
-    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,245,249,0.96));
-    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(17,24,39,0.88));
+    border: 1px solid rgba(148,163,184,0.16);
     border-radius: 18px;
-    padding: 14px 16px;
+    padding: 16px 16px;
     min-height: 108px;
-    box-shadow: 0 12px 26px rgba(2,6,23,0.20);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.04);
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 .kpi-label {
     font-size: 12px;
-    color: #64748b;
+    color: #94a3b8;
     margin-bottom: 10px;
     text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 .kpi-value {
     font-size: 24px;
     line-height: 1.1;
     font-weight: 700;
-    color: #0f172a;
+    color: #f8fafc;
     white-space: nowrap;
     text-align: center;
 }
 .kpi-pos { color: #16a34a; }
 .kpi-neg { color: #dc2626; }
 .etf-row-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(15,23,42,0.56), rgba(15,23,42,0.38));
+    border: 1px solid rgba(148,163,184,0.12);
+    border-radius: 12px;
     padding: 8px 12px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 .etf-name {
     font-size: 15px;
@@ -364,7 +366,7 @@ render_kpi(
 
 st.write("")
 
-p1, p2, p3 = st.columns([0.9, 0.9, 1.4])
+p1, p2, p3 = st.columns([0.82, 0.82, 1.7])
 
 with p1:
     st.subheader("ETF vs Savings")
@@ -375,22 +377,22 @@ with p1:
     fig_split = go.Figure(data=[go.Pie(
         labels=split_df["Type"],
         values=split_df["Value"],
-        hole=0.62,
+        hole=0.66,
         sort=False,
         direction="clockwise",
-        rotation=270,
+        rotation=180,
         marker=dict(colors=["#1f2937", "#9ca3af"]),
         textposition="inside",
         textinfo="percent"
     )])
-    fig_split.update_traces(textfont_size=14, showlegend=True)
+    fig_split.update_traces(textfont_size=13, showlegend=True)
     fig_split.update_layout(
-        height=230,
+        height=220,
         margin=dict(l=0, r=0, t=0, b=0),
         legend=dict(
             orientation="h",
-            y=-0.12,
-            x=0.18,
+            y=-0.10,
+            x=0.20,
             traceorder="normal"
         ),
         paper_bgcolor="rgba(0,0,0,0)",
@@ -406,21 +408,21 @@ with p2:
     fig_bucket = go.Figure(data=[go.Pie(
         labels=bucket_df["Bucket"],
         values=bucket_df["End Value"],
-        hole=0.62,
+        hole=0.66,
         sort=False,
         direction="clockwise",
-        rotation=270,
+        rotation=180,
         marker=dict(colors=["#334155", "#cbd5e1"]),
         textposition="inside",
         textinfo="percent"
     )])
-    fig_bucket.update_traces(textfont_size=14, showlegend=True)
+    fig_bucket.update_traces(textfont_size=13, showlegend=True)
     fig_bucket.update_layout(
-        height=230,
+        height=220,
         margin=dict(l=0, r=0, t=0, b=0),
         legend=dict(
             orientation="h",
-            y=-0.12,
+            y=-0.10,
             x=0.10,
             traceorder="normal"
         ),
@@ -432,17 +434,18 @@ with p2:
 with p3:
     st.subheader("ETF Split")
     pie_df = summary_df[(summary_df["Category"] == "ETF") & (summary_df["End Value"] > 0)][["Asset", "End Value"]]
-    fig_pie = px.pie(pie_df, names="Asset", values="End Value", hole=0.64)
-    fig_pie.update_traces(textinfo="percent", textfont_size=13)
+    fig_pie = px.pie(pie_df, names="Asset", values="End Value", hole=0.60)
+    fig_pie.update_traces(textinfo="percent", textfont_size=12)
     fig_pie.update_layout(
-        height=260,
-        margin=dict(l=10, r=10, t=10, b=10),
+        height=300,
+        margin=dict(l=10, r=10, t=10, b=90),
         legend=dict(
             orientation="h",
-            y=-0.30,
+            y=-0.34,
             x=0,
-            itemwidth=120,
-            traceorder="normal"
+            traceorder="normal",
+            itemwidth=95,
+            font=dict(size=10)
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
@@ -502,21 +505,23 @@ if not trend_df.empty:
             y=trend_df["Total"],
             mode="lines+markers+text",
             name="Portfolio Total",
-            line=dict(color=line_color, width=3),
+            line=dict(color=line_color, width=3, dash="dash"),
             marker=dict(size=7, color=line_color),
             text=[eur0(v) for v in trend_df["Total"]],
-            textposition="top center"
+            textposition="top center",
+            textfont=dict(size=12)
         )
     )
 
     pct_x = []
     pct_y = []
     pct_text = []
+    total_pad = trend_df["Total"].max() * 0.03
     for idx, row in trend_df.iterrows():
         if idx == 0 or pd.isna(row["MoM %"]):
             continue
         pct_x.append(row["Month"])
-        pct_y.append(row["Total"] + (trend_df["Total"].max() * 0.055))
+        pct_y.append(row["Total"] + total_pad)
         pct_text.append(pct1(row["MoM %"]))
 
     fig_combo.add_trace(
@@ -525,7 +530,7 @@ if not trend_df.empty:
             y=pct_y,
             mode="text",
             text=pct_text,
-            textfont=dict(color="#cbd5e1", size=12),
+            textfont=dict(color="#cbd5e1", size=11),
             showlegend=False,
             hoverinfo="skip"
         )
@@ -547,6 +552,7 @@ if not trend_df.empty:
     st.plotly_chart(fig_combo, use_container_width=True, config={"displayModeBar": False})
 
 st.subheader("ETF Monthly Performance")
+st.caption("Compact monthly snapshot")
 
 etf_perf_table = []
 months_5m = MONTHS[max(0, selected_idx - 4): selected_idx + 1]
@@ -584,7 +590,7 @@ for row in etf_perf_table:
     spark_months = row["spark_months"]
     spark_vals = row["spark_vals"]
 
-    outer1, outer2, outer3 = st.columns([2.5, 0.9, 2.2])
+    outer1, outer2, outer3 = st.columns([1.7, 0.55, 1.5])
 
     with outer1:
         st.markdown(
@@ -606,7 +612,7 @@ for row in etf_perf_table:
 
         st.markdown(
             f"""
-            <div class="etf-row-card" style="min-height:66px; display:flex; flex-direction:column; justify-content:center;">
+            <div class="etf-row-card" style="min-height:58px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px;">
                 <div class="etf-perf-head">{selected_month}</div>
                 <div class="{perf_cls}">{perf_text}</div>
             </div>
@@ -615,7 +621,7 @@ for row in etf_perf_table:
         )
 
     with outer3:
-        st.markdown('<div class="etf-row-card" style="min-height:66px; padding-top:6px; padding-bottom:4px;">', unsafe_allow_html=True)
+        st.markdown('<div class="etf-row-card" style="min-height:58px; padding:4px 8px; overflow:hidden;">', unsafe_allow_html=True)
         st.markdown('<div class="spark-head">Sparkline last 5 months</div>', unsafe_allow_html=True)
         if len(spark_vals) >= 2:
             s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
@@ -628,14 +634,14 @@ for row in etf_perf_table:
                     y=s_df["Perf"],
                     mode="lines+markers",
                     line=dict(color=s_color, width=2.2, shape="linear"),
-                    marker=dict(size=5, color=s_color, symbol="diamond"),
+                    marker=dict(size=4, color=s_color, symbol="diamond"),
                     fill="tozeroy",
                     fillcolor=fill,
                     showlegend=False
                 )
             )
             fig_spark.update_layout(
-                height=62,
+                height=46,
                 margin=dict(l=0, r=0, t=0, b=0),
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
@@ -681,8 +687,8 @@ if not mom_df.empty:
         markers=True
     )
     fig_track.update_traces(
-        line=dict(width=2.6, shape="linear"),
-        marker=dict(size=6)
+        line=dict(width=2.4, shape="linear"),
+        marker=dict(size=5)
     )
     fig_track.update_layout(
         height=360,
