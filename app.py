@@ -710,11 +710,17 @@ with update_tab:
 
 with pac_tab:
     st.subheader("Confirm monthly PAC")
-    pac_month = st.selectbox("PAC month", options=MONTHS, index=MONTHS.index("Apr/26"), key="draft_pac_month")
+    pac_month = st.selectbox(
+        "PAC month",
+        options=MONTHS,
+        index=MONTHS.index("Apr/26"),
+        key="draft_pac_month"
+    )
     pac_view = pac_df[pac_df["month"] == pac_month].copy().sort_values("asset")
 
     with st.form("pac_form"):
         pac_updates = []
+
         for asset in etf_assets:
             asset_default = float(assets_df.loc[assets_df["name"] == asset, "pac"].iloc[0])
             existing = pac_view[pac_view["asset"] == asset]
@@ -722,28 +728,50 @@ with pac_tab:
             amount_default = float(existing["amount"].iloc[0]) if not existing.empty else asset_default
 
             c1, c2, c3 = st.columns([2, 1, 1])
-          with c1:
-    st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
-            with c2:
-                mode = st.selectbox(f"Mode - {asset}", ["Auto", "Edited", "No"], index=["Auto", "Edited", "No"].index(mode_default), key=f"mode_{pac_month}_{asset}")
-            with c3:
-                amount = st.number_input(f"Amount - {asset}", min_value=0.0, value=float(amount_default), step=10.0, format="%.2f", key=f"amount_{pac_month}_{asset}")
 
-            pac_updates.append({"month": pac_month, "asset": asset, "mode": mode, "amount": amount})
+            with c1:
+                st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
+
+            with c2:
+                mode = st.selectbox(
+                    f"Mode - {asset}",
+                    ["Auto", "Edited", "No"],
+                    index=["Auto", "Edited", "No"].index(mode_default),
+                    key=f"mode_{pac_month}_{asset}"
+                )
+
+            with c3:
+                amount = st.number_input(
+                    f"Amount - {asset}",
+                    min_value=0.0,
+                    value=float(amount_default),
+                    step=10.0,
+                    format="%.2f",
+                    key=f"amount_{pac_month}_{asset}"
+                )
+
+            pac_updates.append({
+                "month": pac_month,
+                "asset": asset,
+                "mode": mode,
+                "amount": amount
+            })
 
         save_pac = st.form_submit_button("Save PAC", use_container_width=True)
+
         if save_pac:
             pac_df = pac_df[pac_df["month"] != pac_month]
             pac_df = pd.concat([pac_df, pd.DataFrame(pac_updates)], ignore_index=True)
             pac_df["sort"] = pac_df["month"].apply(month_sort_value)
             pac_df = pac_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
             for row in pac_updates:
                 assets_df.loc[assets_df["name"] == row["asset"], "pac"] = float(row["amount"])
+
             st.session_state.pac_df = pac_df
             st.session_state.assets_df = assets_df
             st.success(f"PAC saved for {pac_month}")
             st.rerun()
-
 with manual_tab:
     st.subheader("Add manual transaction")
     with st.form("manual_form"):
