@@ -722,9 +722,8 @@ with pac_tab:
             amount_default = float(existing["amount"].iloc[0]) if not existing.empty else asset_default
 
             c1, c2, c3 = st.columns([2, 1, 1])
-            with c1:
-                st.markdown(f"**{asset}**  
-Default PAC: {eur0(asset_default)}")
+          with c1:
+    st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
             with c2:
                 mode = st.selectbox(f"Mode - {asset}", ["Auto", "Edited", "No"], index=["Auto", "Edited", "No"].index(mode_default), key=f"mode_{pac_month}_{asset}")
             with c3:
