@@ -686,14 +686,42 @@ with left_perf_col:
 
 with right_track_col:
     st.subheader("MoM ETF Performance Track")
-    months_to_show = MONTHS[max(0, selected_idx - 5): selected_idx + 1]
-    default_selection = [x for x in ["Core MSCI World", "MSCI EM", "MSCI World Value", "Physical Gold"] if x in etf_assets]
 
-    selected_track_etfs = st.multiselect(
-        "ETF selection",
-        options=etf_assets,
-        default=default_selection,
-    )
+    # mesi con dati disponibili
+    months_with_data = [m for m in MONTHS if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)]
+
+    def get_ytd_months(months_available):
+        if not months_available:
+            return []
+        last = months_available[-1]
+        yr = last.split("/")[1]
+        return [m for m in months_available if m.split("/")[1] == yr]
+
+    ytd_months = get_ytd_months(months_with_data)
+    period_options = ["All"] + (["YTD"] if len(ytd_months) > 1 else []) + months_with_data
+
+    fc1, fc2 = st.columns([1, 1])
+    with fc1:
+        selected_track_etfs = st.multiselect(
+            "ETF selection",
+            options=etf_assets,
+            default=[x for x in ["Core MSCI World", "MSCI EM", "MSCI World Value", "Physical Gold"] if x in etf_assets],
+        )
+    with fc2:
+        period_filter = st.selectbox(
+            "Period",
+            options=period_options,
+            index=0,
+            key="track_period_filter",
+        )
+
+    if period_filter == "All":
+        months_to_show = months_with_data
+    elif period_filter == "YTD":
+        months_to_show = ytd_months
+    else:
+        m_idx = months_with_data.index(period_filter) if period_filter in months_with_data else 0
+        months_to_show = months_with_data[max(0, m_idx - 1): m_idx + 1]
 
     mom_data = []
     for asset in selected_track_etfs:
