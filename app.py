@@ -617,8 +617,7 @@ with left_perf_col:
             )
 
     with outer3:
-    st.markdown(
-        '<div class="spark-head" style="margin-bottom:4px;">Sparkline last 5 months</div>',
+    st.markdown( '<div class="spark-head" style="margin-bottom:4px;">Sparkline last 5 months</div>',
         unsafe_allow_html=True
     )
 
