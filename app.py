@@ -616,77 +616,37 @@ with left_perf_col:
                 unsafe_allow_html=True,
             )
 
-           with outer3:
-            st.markdown(
-                '<div class="spark-head" style="margin-bottom:4px;">Sparkline last 5 months</div>',
-                unsafe_allow_html=True
-            )
-
+        with outer3:
+            st.markdown('<div class="spark-head" style="margin-bottom:4px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
-
-                line_color = perf_color(spark_vals[-1])
-
-                pos_vals = [v if v >= 0 else 0 for v in spark_vals]
-                neg_vals = [v if v <= 0 else 0 for v in spark_vals]
-
+                last_color = perf_color(spark_vals[-1])
+                fill = "rgba(34,197,94,0.24)" if last_color == "#22c55e" else "rgba(239,68,68,0.16)"
                 fig_spark = go.Figure()
-
-                # green area
-                fig_spark.add_trace(
-                    go.Scatter(
-                        x=s_df["Month"],
-                        y=pos_vals,
-                        mode="lines",
-                        line=dict(width=0),
-                        fill="tozeroy",
-                        fillcolor="rgba(34,197,94,0.24)",
-                        showlegend=False,
-                        hoverinfo="skip"
-                    )
-                )
-
-                # red area
-                fig_spark.add_trace(
-                    go.Scatter(
-                        x=s_df["Month"],
-                        y=neg_vals,
-                        mode="lines",
-                        line=dict(width=0),
-                        fill="tozeroy",
-                        fillcolor="rgba(239,68,68,0.16)",
-                        showlegend=False,
-                        hoverinfo="skip"
-                    )
-                )
-
-                # main line
                 fig_spark.add_trace(
                     go.Scatter(
                         x=s_df["Month"],
                         y=s_df["Perf"],
                         mode="lines+markers",
-                        line=dict(color=line_color, width=2.2),
-                        marker=dict(size=4, color=line_color),
-                        showlegend=False
+                        line=dict(color=last_color, width=2.2, shape="linear"),
+                        marker=dict(size=4, color=last_color, symbol="diamond"),
+                        fill="tozeroy",
+                        fillcolor=fill,
+                        showlegend=False,
                     )
                 )
-
-                fig_spark.add_hline(y=0, line_width=1, line_color="rgba(148,163,184,0.20)")
-
                 fig_spark.update_layout(
                     height=58,
                     margin=dict(l=0, r=0, t=0, b=0),
                     xaxis=dict(visible=False),
                     yaxis=dict(visible=False),
                     paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(255,255,255,0.02)"
+                    plot_bgcolor="rgba(255,255,255,0.02)",
                 )
-
                 st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
-
             else:
                 st.caption("No 5M data")
+
 with right_track_col:
     st.subheader("MoM ETF Performance Track")
     months_to_show = MONTHS[max(0, selected_idx - 5): selected_idx + 1]
@@ -750,17 +710,11 @@ with update_tab:
 
 with pac_tab:
     st.subheader("Confirm monthly PAC")
-    pac_month = st.selectbox(
-        "PAC month",
-        options=MONTHS,
-        index=MONTHS.index("Apr/26"),
-        key="draft_pac_month"
-    )
+    pac_month = st.selectbox("PAC month", options=MONTHS, index=MONTHS.index("Apr/26"), key="draft_pac_month")
     pac_view = pac_df[pac_df["month"] == pac_month].copy().sort_values("asset")
 
     with st.form("pac_form"):
         pac_updates = []
-
         for asset in etf_assets:
             asset_default = float(assets_df.loc[assets_df["name"] == asset, "pac"].iloc[0])
             existing = pac_view[pac_view["asset"] == asset]
@@ -768,50 +722,28 @@ with pac_tab:
             amount_default = float(existing["amount"].iloc[0]) if not existing.empty else asset_default
 
             c1, c2, c3 = st.columns([2, 1, 1])
-
             with c1:
                 st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
-
             with c2:
-                mode = st.selectbox(
-                    f"Mode - {asset}",
-                    ["Auto", "Edited", "No"],
-                    index=["Auto", "Edited", "No"].index(mode_default),
-                    key=f"mode_{pac_month}_{asset}"
-                )
-
+                mode = st.selectbox(f"Mode - {asset}", ["Auto", "Edited", "No"], index=["Auto", "Edited", "No"].index(mode_default), key=f"mode_{pac_month}_{asset}")
             with c3:
-                amount = st.number_input(
-                    f"Amount - {asset}",
-                    min_value=0.0,
-                    value=float(amount_default),
-                    step=10.0,
-                    format="%.2f",
-                    key=f"amount_{pac_month}_{asset}"
-                )
+                amount = st.number_input(f"Amount - {asset}", min_value=0.0, value=float(amount_default), step=10.0, format="%.2f", key=f"amount_{pac_month}_{asset}")
 
-            pac_updates.append({
-                "month": pac_month,
-                "asset": asset,
-                "mode": mode,
-                "amount": amount
-            })
+            pac_updates.append({"month": pac_month, "asset": asset, "mode": mode, "amount": amount})
 
         save_pac = st.form_submit_button("Save PAC", use_container_width=True)
-
         if save_pac:
             pac_df = pac_df[pac_df["month"] != pac_month]
             pac_df = pd.concat([pac_df, pd.DataFrame(pac_updates)], ignore_index=True)
             pac_df["sort"] = pac_df["month"].apply(month_sort_value)
             pac_df = pac_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
-
             for row in pac_updates:
                 assets_df.loc[assets_df["name"] == row["asset"], "pac"] = float(row["amount"])
-
             st.session_state.pac_df = pac_df
             st.session_state.assets_df = assets_df
             st.success(f"PAC saved for {pac_month}")
             st.rerun()
+
 with manual_tab:
     st.subheader("Add manual transaction")
     with st.form("manual_form"):
