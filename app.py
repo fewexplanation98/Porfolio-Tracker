@@ -666,7 +666,7 @@ with perf_wrap_mid:
                 st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
             else:
                 st.caption("No 5M data")
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 st.subheader("MoM ETF Performance Track")
 
@@ -747,42 +747,54 @@ with pac_tab:
 
     with st.form("pac_form"):
         pac_updates = []
+
         for asset in etf_assets:
             asset_default = float(assets_df.loc[assets_df["name"] == asset, "pac"].iloc[0])
             existing = pac_view[pac_view["asset"] == asset]
             mode_default = existing["mode"].iloc[0] if not existing.empty else ("Auto" if asset_default > 0 else "No")
             amount_default = float(existing["amount"].iloc[0]) if not existing.empty else asset_default
 
-           c1, c2, c3 = st.columns([2, 1, 1])
-with c1:
-    st.markdown(f"**{asset}**  \\nDefault PAC: {eur0(asset_default)}")
-with c2:
-    mode = st.selectbox(
-        f"Mode - {asset}",
-        ["Auto", "Edited", "No"],
-        index=["Auto", "Edited", "No"].index(mode_default),
-        key=f"mode_{pac_month}_{asset}"
-    )
-with c3:
-    amount = st.number_input(
-        f"Amount - {asset}",
-        min_value=0.0,
-        value=float(amount_default),
-        step=10.0,
-        format="%.2f",
-        key=f"amount_{pac_month}_{asset}"
-    )
+            c1, c2, c3 = st.columns([2, 1, 1])
 
-            pac_updates.append({"month": pac_month, "asset": asset, "mode": mode, "amount": amount})
+            with c1:
+                st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
+
+            with c2:
+                mode = st.selectbox(
+                    f"Mode - {asset}",
+                    ["Auto", "Edited", "No"],
+                    index=["Auto", "Edited", "No"].index(mode_default),
+                    key=f"mode_{pac_month}_{asset}"
+                )
+
+            with c3:
+                amount = st.number_input(
+                    f"Amount - {asset}",
+                    min_value=0.0,
+                    value=float(amount_default),
+                    step=10.0,
+                    format="%.2f",
+                    key=f"amount_{pac_month}_{asset}"
+                )
+
+            pac_updates.append({
+                "month": pac_month,
+                "asset": asset,
+                "mode": mode,
+                "amount": amount
+            })
 
         save_pac = st.form_submit_button("Save PAC", use_container_width=True)
+
         if save_pac:
             pac_df = pac_df[pac_df["month"] != pac_month]
             pac_df = pd.concat([pac_df, pd.DataFrame(pac_updates)], ignore_index=True)
             pac_df["sort"] = pac_df["month"].apply(month_sort_value)
             pac_df = pac_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
             for row in pac_updates:
                 assets_df.loc[assets_df["name"] == row["asset"], "pac"] = float(row["amount"])
+
             st.session_state.pac_df = pac_df
             st.session_state.assets_df = assets_df
             st.success(f"PAC saved for {pac_month}")
@@ -798,6 +810,7 @@ with manual_tab:
             manual_asset = st.selectbox("ETF", options=etf_assets)
         with c3:
             manual_amount = st.number_input("Amount", min_value=0.0, step=10.0, format="%.2f")
+
         add_manual = st.form_submit_button("Add transaction", use_container_width=True)
         if add_manual and manual_amount > 0:
             manual_df.loc[len(manual_df)] = [manual_month, manual_asset, float(manual_amount)]
@@ -821,6 +834,7 @@ with asset_tab:
             new_pac = st.number_input("Monthly PAC", min_value=0.0, step=10.0, format="%.2f")
 
         add_etf = st.form_submit_button("Add ETF", use_container_width=True)
+
         if add_etf:
             cleaned_name = new_name.strip()
             if cleaned_name == "":
@@ -836,7 +850,12 @@ with asset_tab:
                     "pac": float(new_pac),
                     "active": "Yes"
                 }
-                month_end_df.loc[len(month_end_df)] = {"month": first_month, "asset": cleaned_name, "value": float(first_end_value)}
+                month_end_df.loc[len(month_end_df)] = {
+                    "month": first_month,
+                    "asset": cleaned_name,
+                    "value": float(first_end_value)
+                }
+
                 for month in MONTHS:
                     if month_sort_value(month) >= month_sort_value(first_month):
                         pac_df.loc[len(pac_df)] = {
