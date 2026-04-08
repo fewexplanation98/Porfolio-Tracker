@@ -555,11 +555,16 @@ if not trend_df.empty:
 left_perf_col, right_track_col = st.columns([0.52, 0.48], vertical_alignment="top")
 
 etf_perf_table = []
-months_5m = MONTHS[max(0, selected_idx - 4): selected_idx + 1]
+# sparkline sempre ultimi 5 mesi con dati disponibili, indipendente dal mese selezionato
+last_data_idx = max(
+    (i for i, m in enumerate(MONTHS) if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)),
+    default=selected_idx
+)
+months_5m_spark = MONTHS[max(0, last_data_idx - 4): last_data_idx + 1]
 for asset in etf_assets:
     current_perf = calc_month_perf(asset, selected_month, month_end_map, pac_map, manual_map)
     spark_vals, spark_months = [], []
-    for m in months_5m:
+    for m in months_5m_spark:
         p = calc_month_perf(asset, m, month_end_map, pac_map, manual_map)
         if p is not None:
             spark_vals.append(p)
@@ -620,26 +625,32 @@ with left_perf_col:
             st.markdown('<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
-                spark_color = perf_color(current_perf)
-                fill = "rgba(34,197,94,0.28)" if spark_color == "#22c55e" else "rgba(239,68,68,0.18)"
                 fig_spark = go.Figure()
-                fig_spark.add_trace(
-                    go.Scatter(
-                        x=s_df["Month"],
-                        y=s_df["Perf"],
-                        mode="lines+markers",
-                        line=dict(color=spark_color, width=2.2, shape="linear"),
-                        marker=dict(size=4, color=spark_color, symbol="diamond"),
-                        fill="tozeroy",
-                        fillcolor=fill,
-                        showlegend=False,
-                    )
-                )
+                # area verde sopra lo 0
+                fig_spark.add_trace(go.Scatter(
+                    x=s_df["Month"], y=s_df["Perf"].clip(lower=0),
+                    mode="none", fill="tozeroy",
+                    fillcolor="rgba(34,197,94,0.30)", showlegend=False, hoverinfo="skip"
+                ))
+                # area rossa sotto lo 0
+                fig_spark.add_trace(go.Scatter(
+                    x=s_df["Month"], y=s_df["Perf"].clip(upper=0),
+                    mode="none", fill="tozeroy",
+                    fillcolor="rgba(239,68,68,0.22)", showlegend=False, hoverinfo="skip"
+                ))
+                # linea principale neutra
+                fig_spark.add_trace(go.Scatter(
+                    x=s_df["Month"], y=s_df["Perf"],
+                    mode="lines+markers",
+                    line=dict(color="#94a3b8", width=2.0, shape="linear"),
+                    marker=dict(size=4, color="#94a3b8", symbol="diamond"),
+                    showlegend=False,
+                ))
                 fig_spark.update_layout(
                     height=62,
                     margin=dict(l=0, r=0, t=0, b=0),
                     xaxis=dict(visible=False),
-                    yaxis=dict(visible=False),
+                    yaxis=dict(visible=False, zeroline=False),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(255,255,255,0.02)",
                 )
