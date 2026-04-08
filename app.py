@@ -371,7 +371,7 @@ k5.markdown(
 k6.markdown(
     f"<div style='margin-top:-66px; text-align:center; font-size:20px; font-weight:800; color:{'#22c55e' if (etf_perf_pct is not None and etf_perf_pct >= 0) else '#ef4444'};'>{'' if etf_perf_pct is None else ('↗' if etf_perf_pct >= 0 else '↘')}</div>",
     unsafe_allow_html=True,
-)} {pct1(etf_perf_pct)}",
+)} {pct1(etf_perf_pct)",
     "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg")
 )
 
