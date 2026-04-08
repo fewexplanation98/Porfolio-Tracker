@@ -586,12 +586,12 @@ with left_perf_col:
         spark_months = row["spark_months"]
         spark_vals = row["spark_vals"]
 
-        outer1, outer2, outer3 = st.columns([0.58, 0.34, 0.88], vertical_alignment="center")
+        outer1, outer2, outer3 = st.columns([0.52, 0.28, 0.88], gap="small", vertical_alignment="center")
 
         with outer1:
             st.markdown(
                 f"""
-                <div class="etf-row-card" style="display:inline-block; padding:8px 12px; min-width:150px;">
+                <div class="etf-row-card" style="padding:8px 12px; height:62px; display:flex; flex-direction:column; justify-content:center;">
                     <div class="etf-name">{asset}</div>
                     <div class="etf-sub">{row['bucket']} - {row['subcategory']}</div>
                 </div>
@@ -608,7 +608,7 @@ with left_perf_col:
 
             st.markdown(
                 f"""
-                <div class="etf-row-card" style="min-height:58px; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:6px 10px; text-align:center;">
+                <div class="etf-row-card" style="height:62px; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:6px 10px; text-align:center;">
                     <div class="etf-perf-head">{selected_month}</div>
                     <div class="{perf_cls}">{perf_text}</div>
                 </div>
@@ -617,26 +617,26 @@ with left_perf_col:
             )
 
         with outer3:
-            st.markdown('<div class="spark-head" style="margin-bottom:4px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
+            st.markdown('<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
-                last_color = perf_color(spark_vals[-1])
-                fill = "rgba(34,197,94,0.24)" if last_color == "#22c55e" else "rgba(239,68,68,0.16)"
+                spark_color = perf_color(current_perf)
+                fill = "rgba(34,197,94,0.28)" if spark_color == "#22c55e" else "rgba(239,68,68,0.18)"
                 fig_spark = go.Figure()
                 fig_spark.add_trace(
                     go.Scatter(
                         x=s_df["Month"],
                         y=s_df["Perf"],
                         mode="lines+markers",
-                        line=dict(color=last_color, width=2.2, shape="linear"),
-                        marker=dict(size=4, color=last_color, symbol="diamond"),
+                        line=dict(color=spark_color, width=2.2, shape="linear"),
+                        marker=dict(size=4, color=spark_color, symbol="diamond"),
                         fill="tozeroy",
                         fillcolor=fill,
                         showlegend=False,
                     )
                 )
                 fig_spark.update_layout(
-                    height=58,
+                    height=62,
                     margin=dict(l=0, r=0, t=0, b=0),
                     xaxis=dict(visible=False),
                     yaxis=dict(visible=False),
