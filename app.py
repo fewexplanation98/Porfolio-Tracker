@@ -354,19 +354,30 @@ render_kpi(k4, "Monthly ETF Transactions", eur0(monthly_etf_transactions))
 render_kpi(
     k5,
     "ETF Abs Performance",
-    f"{perf_arrow_html(etf_abs_perf)} {eur0(etf_abs_perf)}",
+    eur0(etf_abs_perf) if etf_abs_perf is not None else "-",
     "pos" if etf_abs_perf >= 0 else "neg"
 )
 render_kpi(
     k6,
     "ETF % Performance",
-    "-" if etf_perf_pct is None else f"{perf_arrow_html(etf_perf_pct)} {pct1(etf_perf_pct)}",
+    "-" if etf_perf_pct is None else pct1(etf_perf_pct),
+    "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg")
+)
+
+k5.markdown(
+    f"<div style='margin-top:-66px; text-align:center; font-size:20px; font-weight:800; color:{'#22c55e' if etf_abs_perf >= 0 else '#ef4444'};'>{'↗' if etf_abs_perf >= 0 else '↘'}</div>",
+    unsafe_allow_html=True,
+)
+k6.markdown(
+    f"<div style='margin-top:-66px; text-align:center; font-size:20px; font-weight:800; color:{'#22c55e' if (etf_perf_pct is not None and etf_perf_pct >= 0) else '#ef4444'};'>{'' if etf_perf_pct is None else ('↗' if etf_perf_pct >= 0 else '↘')}</div>",
+    unsafe_allow_html=True,
+)} {pct1(etf_perf_pct)}",
     "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg")
 )
 
 st.write("")
 
-p1, p2, p3 = st.columns([0.82, 0.82, 1.7])
+p1, p2, p3 = st.columns([0.92, 0.92, 1.46])
 
 with p1:
     st.subheader("ETF vs Savings")
@@ -387,14 +398,9 @@ with p1:
     )])
     fig_split.update_traces(textfont_size=13, showlegend=True)
     fig_split.update_layout(
-        height=220,
-        margin=dict(l=0, r=0, t=0, b=0),
-        legend=dict(
-            orientation="h",
-            y=-0.10,
-            x=0.20,
-            traceorder="normal"
-        ),
+        height=270,
+        margin=dict(l=0, r=0, t=0, b=28),
+        legend=dict(orientation="h", y=-0.14, x=0.18, traceorder="normal", font=dict(size=11)),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
@@ -418,14 +424,9 @@ with p2:
     )])
     fig_bucket.update_traces(textfont_size=13, showlegend=True)
     fig_bucket.update_layout(
-        height=220,
-        margin=dict(l=0, r=0, t=0, b=0),
-        legend=dict(
-            orientation="h",
-            y=-0.10,
-            x=0.10,
-            traceorder="normal"
-        ),
+        height=270,
+        margin=dict(l=0, r=0, t=0, b=28),
+        legend=dict(orientation="h", y=-0.14, x=0.09, traceorder="normal", font=dict(size=11)),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
@@ -433,24 +434,46 @@ with p2:
 
 with p3:
     st.subheader("ETF Split")
-    pie_df = summary_df[(summary_df["Category"] == "ETF") & (summary_df["End Value"] > 0)][["Asset", "End Value"]]
-    fig_pie = px.pie(pie_df, names="Asset", values="End Value", hole=0.60)
-    fig_pie.update_traces(textinfo="percent", textfont_size=12)
+    pie_df = summary_df[(summary_df["Category"] == "ETF") & (summary_df["End Value"] > 0)][["Asset", "End Value"]].copy()
+    pie_colors = {
+        "Core MSCI World": "#86c5f8",
+        "AI & Big Data": "#1273de",
+        "Physical Gold": "#f6a6a6",
+        "MSCI World Value": "#ff3131",
+        "MSCI EM": "#7ae39d",
+        "Core EUR Corp Bond": "#33b4ad",
+        "Global Gov Bond": "#f4c95d",
+        "Defence Tech": "#ff9800",
+    }
+    pie_df["Color"] = pie_df["Asset"].map(pie_colors)
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=pie_df["Asset"],
+        values=pie_df["End Value"],
+        hole=0.58,
+        sort=False,
+        textinfo="percent",
+        textfont_size=12,
+        marker=dict(colors=pie_df["Color"]),
+        showlegend=False
+    )])
     fig_pie.update_layout(
-        height=300,
-        margin=dict(l=10, r=10, t=10, b=90),
-        legend=dict(
-            orientation="h",
-            y=-0.34,
-            x=0,
-            traceorder="normal",
-            itemwidth=95,
-            font=dict(size=10)
-        ),
+        height=290,
+        margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+
+    legend_items = []
+    for _, r in pie_df.iterrows():
+        legend_items.append(
+            f"<div style='display:flex; align-items:center; gap:8px; min-width:0; white-space:nowrap;'><span style='display:inline-block; width:12px; height:12px; border-radius:0; background:{r['Color']};'></span><span style='font-size:11px; color:#e5e7eb;'>{r['Asset']}</span></div>"
+        )
+    legend_html = "".join(legend_items)
+    st.markdown(
+        f"<div style='display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px 18px; margin-top:2px; width:100%;'>{legend_html}</div>",
+        unsafe_allow_html=True,
+    )
 
 st.subheader("Portfolio Trend MoM")
 
@@ -503,25 +526,34 @@ if not trend_df.empty:
         go.Scatter(
             x=trend_df["Month"],
             y=trend_df["Total"],
-            mode="lines+markers+text",
+            mode="lines+markers",
             name="Portfolio Total",
             line=dict(color=line_color, width=3, dash="dash"),
-            marker=dict(size=7, color=line_color),
+            marker=dict(size=7, color=line_color)
+        )
+    )
+
+    total_label_y = trend_df["Total"] + (trend_df["Total"].max() * 0.015)
+    fig_combo.add_trace(
+        go.Scatter(
+            x=trend_df["Month"],
+            y=total_label_y,
+            mode="text",
             text=[eur0(v) for v in trend_df["Total"]],
-            textposition="top center",
-            textfont=dict(size=12)
+            textfont=dict(size=12, color="#e5e7eb"),
+            showlegend=False,
+            hoverinfo="skip"
         )
     )
 
     pct_x = []
     pct_y = []
     pct_text = []
-    total_pad = trend_df["Total"].max() * 0.03
     for idx, row in trend_df.iterrows():
         if idx == 0 or pd.isna(row["MoM %"]):
             continue
         pct_x.append(row["Month"])
-        pct_y.append(row["Total"] + total_pad)
+        pct_y.append(row["Total"] + (trend_df["Total"].max() * 0.045))
         pct_text.append(pct1(row["MoM %"]))
 
     fig_combo.add_trace(
@@ -553,6 +585,7 @@ if not trend_df.empty:
 
 st.subheader("ETF Monthly Performance")
 st.caption("Compact monthly snapshot")
+perf_wrap_left, perf_wrap_mid, perf_wrap_right = st.columns([0.16, 0.68, 0.16])
 
 etf_perf_table = []
 months_5m = MONTHS[max(0, selected_idx - 4): selected_idx + 1]
@@ -584,16 +617,17 @@ etf_perf_table = sorted(
     reverse=True
 )
 
-for row in etf_perf_table:
-    asset = row["asset"]
+with perf_wrap_mid:
+    for row in etf_perf_table:
+        asset = row["asset"]
     current_perf = row["current_perf"]
     spark_months = row["spark_months"]
     spark_vals = row["spark_vals"]
 
-    outer1, outer2, outer3 = st.columns([1.7, 0.55, 1.5])
+            outer1, outer2, outer3 = st.columns([1.35, 0.42, 1.18])
 
-    with outer1:
-        st.markdown(
+            with outer1:
+            st.markdown(
             f"""
             <div class="etf-row-card">
                 <div class="etf-name">{asset}</div>
@@ -603,8 +637,8 @@ for row in etf_perf_table:
             unsafe_allow_html=True
         )
 
-    with outer2:
-        perf_cls = "etf-perf-na"
+            with outer2:
+            perf_cls = "etf-perf-na"
         perf_text = "-"
         if current_perf is not None:
             perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
@@ -612,7 +646,7 @@ for row in etf_perf_table:
 
         st.markdown(
             f"""
-            <div class="etf-row-card" style="min-height:58px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px;">
+            <div class="etf-row-card" style="min-height:54px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px;">
                 <div class="etf-perf-head">{selected_month}</div>
                 <div class="{perf_cls}">{perf_text}</div>
             </div>
@@ -620,9 +654,9 @@ for row in etf_perf_table:
             unsafe_allow_html=True
         )
 
-    with outer3:
-        st.markdown('<div class="etf-row-card" style="min-height:58px; padding:4px 8px; overflow:hidden;">', unsafe_allow_html=True)
-        st.markdown('<div class="spark-head">Sparkline last 5 months</div>', unsafe_allow_html=True)
+            with outer3:
+            st.markdown('<div class="etf-row-card" style="min-height:54px; padding:4px 6px; overflow:hidden;">', unsafe_allow_html=True)
+        st.markdown('<div class="spark-head" style="margin-bottom:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
         if len(spark_vals) >= 2:
             s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
             s_color = perf_color(spark_vals[-1])
@@ -641,7 +675,7 @@ for row in etf_perf_table:
                 )
             )
             fig_spark.update_layout(
-                height=46,
+                height=40,
                 margin=dict(l=0, r=0, t=0, b=0),
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
