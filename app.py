@@ -354,14 +354,29 @@ render_kpi(k4, "Monthly ETF Transactions", eur0(monthly_etf_transactions))
 render_kpi(k5, "ETF Abs Performance", eur0(etf_abs_perf), "pos" if etf_abs_perf >= 0 else "neg")
 render_kpi(k6, "ETF % Performance", "-" if etf_perf_pct is None else pct1(etf_perf_pct), "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg"))
 
+k5_arrow = "↗" if etf_abs_perf >= 0 else "↘"
+k5_arrow_color = "#22c55e" if etf_abs_perf >= 0 else "#ef4444"
+
+if etf_perf_pct is None:
+    k6_arrow = ""
+    k6_arrow_color = "#94a3b8"
+else:
+    k6_arrow = "↗" if etf_perf_pct >= 0 else "↘"
+    k6_arrow_color = "#22c55e" if etf_perf_pct >= 0 else "#ef4444"
+
 k5.markdown(
-    f"<div style='margin-top:-66px; margin-left:112px; text-align:left; font-size:18px; font-weight:800; color:{'#22c55e' if etf_abs_perf >= 0 else '#ef4444'};'>{'↗' if etf_abs_perf >= 0 else '↘'}</div>",
+    (
+        "<div style='margin-top:-66px; margin-left:112px; text-align:left; "
+        f"font-size:18px; font-weight:800; color:{k5_arrow_color};'>{k5_arrow}</div>"
+    ),
     unsafe_allow_html=True,
 )
+
 k6.markdown(
-    f"<div style='margin-top:-66px; margin-left:108px; text-align:left; font-size:18px; font-weight:800; color:{'#22c55e' if (etf_perf_pct is not None and etf_perf_pct >= 0) else '#ef4444'};'>{'' if etf_perf_pct is None else ('↗' if etf_perf_pct >= 0 else '↘')}</div>",
-    unsafe_allow_html=True,
-) else '#ef4444'};'>{'' if etf_perf_pct is None else ('↗' if etf_perf_pct >= 0 else '↘')}</div>",
+    (
+        "<div style='margin-top:-66px; margin-left:108px; text-align:left; "
+        f"font-size:18px; font-weight:800; color:{k6_arrow_color};'>{k6_arrow}</div>"
+    ),
     unsafe_allow_html=True,
 )
 
