@@ -351,18 +351,8 @@ render_kpi(k1, "Portfolio Total", eur0(portfolio_total))
 render_kpi(k2, "ETF Total", eur0(etf_total))
 render_kpi(k3, "Savings", eur0(savings_total))
 render_kpi(k4, "Monthly ETF Transactions", eur0(monthly_etf_transactions))
-render_kpi(
-    k5,
-    "ETF Abs Performance",
-    eur0(etf_abs_perf) if etf_abs_perf is not None else "-",
-    "pos" if etf_abs_perf >= 0 else "neg"
-)
-render_kpi(
-    k6,
-    "ETF % Performance",
-    "-" if etf_perf_pct is None else pct1(etf_perf_pct),
-    "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg")
-)
+render_kpi(k5, "ETF Abs Performance", eur0(etf_abs_perf), "pos" if etf_abs_perf >= 0 else "neg")
+render_kpi(k6, "ETF % Performance", "-" if etf_perf_pct is None else pct1(etf_perf_pct), "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg"))
 
 k5.markdown(
     f"<div style='margin-top:-66px; text-align:center; font-size:20px; font-weight:800; color:{'#22c55e' if etf_abs_perf >= 0 else '#ef4444'};'>{'↗' if etf_abs_perf >= 0 else '↘'}</div>",
@@ -371,8 +361,6 @@ k5.markdown(
 k6.markdown(
     f"<div style='margin-top:-66px; text-align:center; font-size:20px; font-weight:800; color:{'#22c55e' if (etf_perf_pct is not None and etf_perf_pct >= 0) else '#ef4444'};'>{'' if etf_perf_pct is None else ('↗' if etf_perf_pct >= 0 else '↘')}</div>",
     unsafe_allow_html=True,
-)} {pct1(etf_perf_pct)",
-    "default" if etf_perf_pct is None else ("pos" if etf_perf_pct >= 0 else "neg")
 )
 
 st.write("")
@@ -381,10 +369,7 @@ p1, p2, p3 = st.columns([0.92, 0.92, 1.46])
 
 with p1:
     st.subheader("ETF vs Savings")
-    split_df = pd.DataFrame({
-        "Type": ["ETF", "Savings"],
-        "Value": [etf_total, savings_total]
-    })
+    split_df = pd.DataFrame({"Type": ["ETF", "Savings"], "Value": [etf_total, savings_total]})
     fig_split = go.Figure(data=[go.Pie(
         labels=split_df["Type"],
         values=split_df["Value"],
@@ -497,7 +482,6 @@ if not trend_df.empty:
         line_color = "#ef4444"
 
     fig_combo = go.Figure()
-
     fig_combo.add_bar(
         x=trend_df["Month"],
         y=trend_df["ETF"],
@@ -509,7 +493,6 @@ if not trend_df.empty:
         insidetextanchor="middle",
         textfont=dict(size=12, color="#f8fafc")
     )
-
     fig_combo.add_bar(
         x=trend_df["Month"],
         y=trend_df["Savings"],
@@ -521,7 +504,6 @@ if not trend_df.empty:
         insidetextanchor="middle",
         textfont=dict(size=12, color="#111827")
     )
-
     fig_combo.add_trace(
         go.Scatter(
             x=trend_df["Month"],
@@ -585,7 +567,7 @@ if not trend_df.empty:
 
 st.subheader("ETF Monthly Performance")
 st.caption("Compact monthly snapshot")
-perf_wrap_left, perf_wrap_mid, perf_wrap_right = st.columns([0.16, 0.68, 0.16])
+_, perf_wrap_mid, _ = st.columns([0.16, 0.68, 0.16])
 
 etf_perf_table = []
 months_5m = MONTHS[max(0, selected_idx - 4): selected_idx + 1]
@@ -594,7 +576,6 @@ for asset in etf_assets:
     current_perf = calc_month_perf(asset, selected_month, month_end_map, pac_map, manual_map)
     spark_vals = []
     spark_months = []
-
     for m in months_5m:
         p = calc_month_perf(asset, m, month_end_map, pac_map, manual_map)
         if p is not None:
@@ -620,72 +601,72 @@ etf_perf_table = sorted(
 with perf_wrap_mid:
     for row in etf_perf_table:
         asset = row["asset"]
-    current_perf = row["current_perf"]
-    spark_months = row["spark_months"]
-    spark_vals = row["spark_vals"]
+        current_perf = row["current_perf"]
+        spark_months = row["spark_months"]
+        spark_vals = row["spark_vals"]
 
-            outer1, outer2, outer3 = st.columns([1.35, 0.42, 1.18])
+        outer1, outer2, outer3 = st.columns([1.35, 0.42, 1.18])
 
-            with outer1:
+        with outer1:
             st.markdown(
-            f"""
-            <div class="etf-row-card">
-                <div class="etf-name">{asset}</div>
-                <div class="etf-sub">{row["bucket"]} - {row["subcategory"]}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                f"""
+                <div class="etf-row-card">
+                    <div class="etf-name">{asset}</div>
+                    <div class="etf-sub">{row['bucket']} - {row['subcategory']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-            with outer2:
+        with outer2:
             perf_cls = "etf-perf-na"
-        perf_text = "-"
-        if current_perf is not None:
-            perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
-            perf_text = f"{perf_arrow_html(current_perf)} {pct1(current_perf)}"
+            perf_text = "-"
+            if current_perf is not None:
+                perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
+                perf_text = f"{perf_arrow_html(current_perf)} {pct1(current_perf)}"
 
-        st.markdown(
-            f"""
-            <div class="etf-row-card" style="min-height:54px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px;">
-                <div class="etf-perf-head">{selected_month}</div>
-                <div class="{perf_cls}">{perf_text}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+            st.markdown(
+                f"""
+                <div class="etf-row-card" style="min-height:54px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px;">
+                    <div class="etf-perf-head">{selected_month}</div>
+                    <div class="{perf_cls}">{perf_text}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-            with outer3:
+        with outer3:
             st.markdown('<div class="etf-row-card" style="min-height:54px; padding:4px 6px; overflow:hidden;">', unsafe_allow_html=True)
-        st.markdown('<div class="spark-head" style="margin-bottom:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
-        if len(spark_vals) >= 2:
-            s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
-            s_color = perf_color(spark_vals[-1])
-            fill = "rgba(34,197,94,0.10)" if s_color == "#22c55e" else "rgba(239,68,68,0.10)"
-            fig_spark = go.Figure()
-            fig_spark.add_trace(
-                go.Scatter(
-                    x=s_df["Month"],
-                    y=s_df["Perf"],
-                    mode="lines+markers",
-                    line=dict(color=s_color, width=2.2, shape="linear"),
-                    marker=dict(size=4, color=s_color, symbol="diamond"),
-                    fill="tozeroy",
-                    fillcolor=fill,
-                    showlegend=False
+            st.markdown('<div class="spark-head" style="margin-bottom:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
+            if len(spark_vals) >= 2:
+                s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
+                s_color = perf_color(spark_vals[-1])
+                fill = "rgba(34,197,94,0.10)" if s_color == "#22c55e" else "rgba(239,68,68,0.10)"
+                fig_spark = go.Figure()
+                fig_spark.add_trace(
+                    go.Scatter(
+                        x=s_df["Month"],
+                        y=s_df["Perf"],
+                        mode="lines+markers",
+                        line=dict(color=s_color, width=2.2, shape="linear"),
+                        marker=dict(size=4, color=s_color, symbol="diamond"),
+                        fill="tozeroy",
+                        fillcolor=fill,
+                        showlegend=False
+                    )
                 )
-            )
-            fig_spark.update_layout(
-                height=40,
-                margin=dict(l=0, r=0, t=0, b=0),
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-            st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.caption("No 5M data")
-        st.markdown('</div>', unsafe_allow_html=True)
+                fig_spark.update_layout(
+                    height=40,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)"
+                )
+                st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.caption("No 5M data")
+            st.markdown('</div>', unsafe_allow_html=True)
 
 st.subheader("MoM ETF Performance Track")
 
@@ -699,31 +680,17 @@ selected_track_etfs = st.multiselect(
 )
 
 mom_data = []
-
 for asset in selected_track_etfs:
     for m in months_to_show:
         p = calc_month_perf(asset, m, month_end_map, pac_map, manual_map)
         if p is not None:
-            mom_data.append({
-                "Month": m,
-                "Asset": asset,
-                "Perf": p
-            })
+            mom_data.append({"Month": m, "Asset": asset, "Perf": p})
 
 mom_df = pd.DataFrame(mom_data)
 
 if not mom_df.empty:
-    fig_track = px.line(
-        mom_df,
-        x="Month",
-        y="Perf",
-        color="Asset",
-        markers=True
-    )
-    fig_track.update_traces(
-        line=dict(width=2.4, shape="linear"),
-        marker=dict(size=5)
-    )
+    fig_track = px.line(mom_df, x="Month", y="Perf", color="Asset", markers=True)
+    fig_track.update_traces(line=dict(width=2.4, shape="linear"), marker=dict(size=5))
     fig_track.update_layout(
         height=360,
         margin=dict(l=10, r=10, t=10, b=10),
@@ -763,7 +730,6 @@ with update_tab:
                 )
 
         save_month_end = st.form_submit_button("Save month end", use_container_width=True)
-
         if save_month_end:
             updated_rows = [{"month": draft_month, "asset": asset, "value": float(value)} for asset, value in month_end_inputs.items()]
             month_end_df = month_end_df[month_end_df["month"] != draft_month]
@@ -789,7 +755,8 @@ with pac_tab:
 
             c1, c2, c3 = st.columns([2, 1, 1])
             with c1:
-                st.markdown(f"**{asset}**  \nDefault PAC: {eur0(asset_default)}")
+                st.markdown(f"**{asset}**  
+Default PAC: {eur0(asset_default)}")
             with c2:
                 mode = st.selectbox(f"Mode - {asset}", ["Auto", "Edited", "No"], index=["Auto", "Edited", "No"].index(mode_default), key=f"mode_{pac_month}_{asset}")
             with c3:
@@ -843,7 +810,6 @@ with asset_tab:
             new_pac = st.number_input("Monthly PAC", min_value=0.0, step=10.0, format="%.2f")
 
         add_etf = st.form_submit_button("Add ETF", use_container_width=True)
-
         if add_etf:
             cleaned_name = new_name.strip()
             if cleaned_name == "":
