@@ -626,24 +626,50 @@ with left_perf_col:
             if len(spark_vals) >= 2:
                 s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
                 fig_spark = go.Figure()
-                # area verde sopra lo 0
+
+                # costruisce segmenti con intersezione allo zero per fill preciso
+                xs = list(range(len(spark_months)))
+                ys = spark_vals
+
+                def interp_zero(x0, y0, x1, y1):
+                    """ritorna x dove la linea attraversa lo 0"""
+                    return x0 + y0 * (x1 - x0) / (y0 - y1)
+
+                # raccoglie punti con zero-crossings inseriti
+                pts = []
+                for i in range(len(xs)):
+                    pts.append((xs[i], ys[i]))
+                    if i < len(xs) - 1:
+                        y0, y1 = ys[i], ys[i + 1]
+                        if (y0 > 0 and y1 < 0) or (y0 < 0 and y1 > 0):
+                            zx = interp_zero(xs[i], y0, xs[i + 1], y1)
+                            pts.append((zx, 0.0))
+
+                px_all = [p[0] for p in pts]
+                py_all = [p[1] for p in pts]
+
+                # fill verde (positivo)
+                py_pos = [max(v, 0) for v in py_all]
                 fig_spark.add_trace(go.Scatter(
-                    x=s_df["Month"], y=s_df["Perf"].clip(lower=0),
+                    x=px_all, y=py_pos,
                     mode="none", fill="tozeroy",
-                    fillcolor="rgba(34,197,94,0.30)", showlegend=False, hoverinfo="skip"
+                    fillcolor="rgba(34,197,94,0.35)",
+                    showlegend=False, hoverinfo="skip"
                 ))
-                # area rossa sotto lo 0
+                # fill rosso (negativo)
+                py_neg = [min(v, 0) for v in py_all]
                 fig_spark.add_trace(go.Scatter(
-                    x=s_df["Month"], y=s_df["Perf"].clip(upper=0),
+                    x=px_all, y=py_neg,
                     mode="none", fill="tozeroy",
-                    fillcolor="rgba(239,68,68,0.22)", showlegend=False, hoverinfo="skip"
+                    fillcolor="rgba(239,68,68,0.28)",
+                    showlegend=False, hoverinfo="skip"
                 ))
-                # linea principale neutra
+                # linea principale
                 fig_spark.add_trace(go.Scatter(
-                    x=s_df["Month"], y=s_df["Perf"],
+                    x=xs, y=ys,
                     mode="lines+markers",
-                    line=dict(color="#94a3b8", width=2.0, shape="linear"),
-                    marker=dict(size=4, color="#94a3b8", symbol="diamond"),
+                    line=dict(color="#e2e8f0", width=1.8, shape="linear"),
+                    marker=dict(size=3.5, color="#e2e8f0", symbol="circle"),
                     showlegend=False,
                 ))
                 fig_spark.update_layout(
@@ -652,7 +678,7 @@ with left_perf_col:
                     xaxis=dict(visible=False),
                     yaxis=dict(visible=False, zeroline=False),
                     paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(255,255,255,0.02)",
+                    plot_bgcolor="rgba(0,0,0,0)",
                 )
                 st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
             else:
