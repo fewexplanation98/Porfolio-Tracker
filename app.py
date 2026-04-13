@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import json
+import io
 
 st.set_page_config(page_title="Portfolio Tracker", page_icon="📈", layout="wide")
 
@@ -129,6 +131,42 @@ def calc_month_perf(asset, month, month_end_map, pac_map, manual_map):
     return None
 
 
+def state_to_json() -> str:
+    """Serialize current session state to JSON string, including backup timestamp."""
+    from datetime import datetime
+    data = {
+        "assets": st.session_state.assets_df.to_dict(orient="records"),
+        "month_end": st.session_state.month_end_df.to_dict(orient="records"),
+        "manual": st.session_state.manual_df.to_dict(orient="records"),
+        "pac": st.session_state.pac_df.to_dict(orient="records"),
+        "backup_ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    return json.dumps(data, indent=2)
+
+
+def load_state_from_json(raw: str):
+    """Load session state from JSON string. Returns (error_string_or_None, backup_ts_or_None)."""
+    try:
+        data = json.loads(raw)
+        st.session_state.assets_df = pd.DataFrame(data["assets"])
+        st.session_state.month_end_df = pd.DataFrame(data["month_end"])
+        st.session_state.manual_df = pd.DataFrame(data["manual"])
+        st.session_state.pac_df = pd.DataFrame(data["pac"])
+        return None
+    except Exception as e:
+        return str(e)
+
+
+def _latest_data_month() -> str:
+    """Returns the latest month label that has any month-end data."""
+    me = st.session_state.month_end_df
+    if me.empty:
+        return MONTHS[0]
+    months_present = me["month"].unique().tolist()
+    months_present.sort(key=month_sort_value)
+    return months_present[-1]
+
+
 if "assets_df" not in st.session_state:
     assets_df, month_end_df, manual_df, pac_df = seed_data()
     st.session_state.assets_df = assets_df
@@ -136,6 +174,59 @@ if "assets_df" not in st.session_state:
     st.session_state.manual_df = manual_df
     st.session_state.pac_df = pac_df
 
+# track last backup timestamp across downloads
+if "last_backup_ts" not in st.session_state:
+    st.session_state.last_backup_ts = None
+if "last_modified_ts" not in st.session_state:
+    st.session_state.last_modified_ts = None
+
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 💾 Backup & Restore")
+
+    latest_dm = _latest_data_month()
+    last_ts = st.session_state.last_backup_ts
+
+    # status badge
+    last_mod = st.session_state.last_modified_ts
+    if last_ts is None and last_mod is None:
+        st.info("💾 No data saved yet")
+    elif last_ts is None and last_mod is not None:
+        st.error(f"🔴 Unsaved changes! Data modified: **{last_mod}**")
+    elif last_mod is not None and last_mod > last_ts:
+        st.error(f"🔴 Backup outdated!\nModified: **{last_mod}**\nLast backup: **{last_ts}**")
+    else:
+        st.success(f"✅ Up to date — last backup: **{last_ts}**")
+
+    # Download backup — we inject timestamp into filename too
+    backup_json = state_to_json()
+    filename = f"portfolio_backup_{latest_dm.replace('/', '-')}.json"
+    if st.download_button(
+        label="⬇️ Save backup",
+        data=backup_json,
+        file_name=filename,
+        mime="application/json",
+        use_container_width=True,
+    ):
+        from datetime import datetime
+        st.session_state.last_backup_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        st.rerun()
+
+    st.markdown("---")
+
+    # Upload backup
+    uploaded = st.file_uploader("⬆️ Load backup", type="json", key="backup_upload", label_visibility="collapsed")
+    if uploaded is not None:
+        err = load_state_from_json(uploaded.read().decode("utf-8"))
+        if err:
+            st.error(f"Error loading backup: {err}")
+        else:
+            from datetime import datetime
+            st.session_state.last_backup_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+            st.success("Backup restored!")
+            st.rerun()
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
 assets_df = st.session_state.assets_df.copy()
 month_end_df = st.session_state.month_end_df.copy()
 manual_df = st.session_state.manual_df.copy()
@@ -555,7 +646,6 @@ if not trend_df.empty:
 left_perf_col, right_track_col = st.columns([0.52, 0.48], vertical_alignment="top")
 
 etf_perf_table = []
-# sparkline sempre ultimi 5 mesi con dati disponibili, indipendente dal mese selezionato
 last_data_idx = max(
     (i for i, m in enumerate(MONTHS) if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)),
     default=selected_idx
@@ -624,18 +714,13 @@ with left_perf_col:
         with outer3:
             st.markdown('<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
-                s_df = pd.DataFrame({"Month": spark_months, "Perf": spark_vals})
                 fig_spark = go.Figure()
-
-                # costruisce segmenti con intersezione allo zero per fill preciso
                 xs = list(range(len(spark_months)))
                 ys = spark_vals
 
                 def interp_zero(x0, y0, x1, y1):
-                    """ritorna x dove la linea attraversa lo 0"""
                     return x0 + y0 * (x1 - x0) / (y0 - y1)
 
-                # raccoglie punti con zero-crossings inseriti
                 pts = []
                 for i in range(len(xs)):
                     pts.append((xs[i], ys[i]))
@@ -648,23 +733,18 @@ with left_perf_col:
                 px_all = [p[0] for p in pts]
                 py_all = [p[1] for p in pts]
 
-                # fill verde (positivo)
-                py_pos = [max(v, 0) for v in py_all]
                 fig_spark.add_trace(go.Scatter(
-                    x=px_all, y=py_pos,
+                    x=px_all, y=[max(v, 0) for v in py_all],
                     mode="none", fill="tozeroy",
                     fillcolor="rgba(34,197,94,0.35)",
                     showlegend=False, hoverinfo="skip"
                 ))
-                # fill rosso (negativo)
-                py_neg = [min(v, 0) for v in py_all]
                 fig_spark.add_trace(go.Scatter(
-                    x=px_all, y=py_neg,
+                    x=px_all, y=[min(v, 0) for v in py_all],
                     mode="none", fill="tozeroy",
                     fillcolor="rgba(239,68,68,0.28)",
                     showlegend=False, hoverinfo="skip"
                 ))
-                # linea principale
                 fig_spark.add_trace(go.Scatter(
                     x=xs, y=ys,
                     mode="lines+markers",
@@ -687,7 +767,6 @@ with left_perf_col:
 with right_track_col:
     st.subheader("MoM ETF Performance Track")
 
-    # mesi con dati disponibili
     months_with_data = [m for m in MONTHS if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)]
 
     def get_ytd_months(months_available):
@@ -770,6 +849,7 @@ with update_tab:
             month_end_df["sort"] = month_end_df["month"].apply(month_sort_value)
             month_end_df = month_end_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
             st.session_state.month_end_df = month_end_df
+            st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success(f"Month end saved for {draft_month}")
             st.rerun()
 
@@ -806,6 +886,7 @@ with pac_tab:
                 assets_df.loc[assets_df["name"] == row["asset"], "pac"] = float(row["amount"])
             st.session_state.pac_df = pac_df
             st.session_state.assets_df = assets_df
+            st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success(f"PAC saved for {pac_month}")
             st.rerun()
 
@@ -824,6 +905,7 @@ with manual_tab:
         if add_manual and manual_amount > 0:
             manual_df.loc[len(manual_df)] = [manual_month, manual_asset, float(manual_amount)]
             st.session_state.manual_df = manual_df
+            st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success("Manual transaction added")
             st.rerun()
 
@@ -871,5 +953,6 @@ with asset_tab:
                 st.session_state.assets_df = assets_df
                 st.session_state.month_end_df = month_end_df
                 st.session_state.pac_df = pac_df
+                st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
                 st.success(f"{cleaned_name} added to portfolio")
                 st.rerun()
