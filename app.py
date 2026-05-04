@@ -99,7 +99,9 @@ def perf_arrow(value):
 def seed_data():
     assets_df = pd.DataFrame(ASSETS)
     month_end_df = pd.DataFrame(MONTH_END_SEED, columns=["month", "asset", "value"])
+    month_end_df["value"] = pd.to_numeric(month_end_df["value"], errors="coerce").fillna(0.0)
     manual_df = pd.DataFrame(MANUAL_SEED, columns=["month", "asset", "amount"])
+    manual_df["amount"] = pd.to_numeric(manual_df["amount"], errors="coerce").fillna(0.0)
 
     pac_rows = []
     for month in MONTHS:
@@ -144,14 +146,28 @@ def state_to_json() -> str:
     return json.dumps(data, indent=2)
 
 
+# ── FIX 2: enforce correct numeric dtypes after JSON round-trip ───────────────
 def load_state_from_json(raw: str):
-    """Load session state from JSON string. Returns (error_string_or_None, backup_ts_or_None)."""
+    """Load session state from JSON string. Returns error string or None."""
     try:
         data = json.loads(raw)
         st.session_state.assets_df = pd.DataFrame(data["assets"])
-        st.session_state.month_end_df = pd.DataFrame(data["month_end"])
-        st.session_state.manual_df = pd.DataFrame(data["manual"])
-        st.session_state.pac_df = pd.DataFrame(data["pac"])
+
+        me = pd.DataFrame(data["month_end"])
+        if not me.empty:
+            me["value"] = pd.to_numeric(me["value"], errors="coerce").fillna(0.0)
+        st.session_state.month_end_df = me
+
+        mn = pd.DataFrame(data["manual"])
+        if not mn.empty:
+            mn["amount"] = pd.to_numeric(mn["amount"], errors="coerce").fillna(0.0)
+        st.session_state.manual_df = mn
+
+        pc = pd.DataFrame(data["pac"])
+        if not pc.empty:
+            pc["amount"] = pd.to_numeric(pc["amount"], errors="coerce").fillna(0.0)
+        st.session_state.pac_df = pc
+
         return None
     except Exception as e:
         return str(e)
@@ -198,7 +214,7 @@ with st.sidebar:
     else:
         st.success(f"✅ Up to date — last backup: **{last_ts}**")
 
-    # Download backup — we inject timestamp into filename too
+    # Download backup
     backup_json = state_to_json()
     filename = f"portfolio_backup_{latest_dm.replace('/', '-')}.json"
     if st.download_button(
@@ -839,16 +855,28 @@ with update_tab:
         for i, asset in enumerate(all_assets):
             current_value = month_end_map.get((draft_month, asset), 0)
             with cols[i % 3]:
-                month_end_inputs[asset] = st.number_input(asset, min_value=0.0, value=float(current_value), step=100.0, format="%.2f", key=f"month_end_{draft_month}_{asset}")
+                # ── FIX 1: stable widget key not tied to draft_month ──────────
+                month_end_inputs[asset] = st.number_input(
+                    asset,
+                    min_value=0.0,
+                    value=float(current_value),
+                    step=100.0,
+                    format="%.2f",
+                    key=f"me_{asset}",          # was: f"month_end_{draft_month}_{asset}"
+                )
 
         save_month_end = st.form_submit_button("Save month end", use_container_width=True)
         if save_month_end:
-            updated_rows = [{"month": draft_month, "asset": asset, "value": float(value)} for asset, value in month_end_inputs.items()]
-            month_end_df = month_end_df[month_end_df["month"] != draft_month]
-            month_end_df = pd.concat([month_end_df, pd.DataFrame(updated_rows)], ignore_index=True)
-            month_end_df["sort"] = month_end_df["month"].apply(month_sort_value)
-            month_end_df = month_end_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
-            st.session_state.month_end_df = month_end_df
+            updated_rows = [
+                {"month": draft_month, "asset": asset, "value": float(value)}
+                for asset, value in month_end_inputs.items()
+            ]
+            new_me = st.session_state.month_end_df[st.session_state.month_end_df["month"] != draft_month].copy()
+            new_me = pd.concat([new_me, pd.DataFrame(updated_rows)], ignore_index=True)
+            new_me["sort"] = new_me["month"].apply(month_sort_value)
+            new_me = new_me.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+            new_me["value"] = pd.to_numeric(new_me["value"], errors="coerce").fillna(0.0)
+            st.session_state.month_end_df = new_me
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success(f"Month end saved for {draft_month}")
             st.rerun()
@@ -878,14 +906,16 @@ with pac_tab:
 
         save_pac = st.form_submit_button("Save PAC", use_container_width=True)
         if save_pac:
-            pac_df = pac_df[pac_df["month"] != pac_month]
-            pac_df = pd.concat([pac_df, pd.DataFrame(pac_updates)], ignore_index=True)
-            pac_df["sort"] = pac_df["month"].apply(month_sort_value)
-            pac_df = pac_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+            new_pac = st.session_state.pac_df[st.session_state.pac_df["month"] != pac_month].copy()
+            new_pac = pd.concat([new_pac, pd.DataFrame(pac_updates)], ignore_index=True)
+            new_pac["sort"] = new_pac["month"].apply(month_sort_value)
+            new_pac = new_pac.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+            new_pac["amount"] = pd.to_numeric(new_pac["amount"], errors="coerce").fillna(0.0)
+            new_assets = st.session_state.assets_df.copy()
             for row in pac_updates:
-                assets_df.loc[assets_df["name"] == row["asset"], "pac"] = float(row["amount"])
-            st.session_state.pac_df = pac_df
-            st.session_state.assets_df = assets_df
+                new_assets.loc[new_assets["name"] == row["asset"], "pac"] = float(row["amount"])
+            st.session_state.pac_df = new_pac
+            st.session_state.assets_df = new_assets
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success(f"PAC saved for {pac_month}")
             st.rerun()
@@ -903,8 +933,10 @@ with manual_tab:
 
         add_manual = st.form_submit_button("Add transaction", use_container_width=True)
         if add_manual and manual_amount > 0:
-            manual_df.loc[len(manual_df)] = [manual_month, manual_asset, float(manual_amount)]
-            st.session_state.manual_df = manual_df
+            new_manual = st.session_state.manual_df.copy()
+            new_manual.loc[len(new_manual)] = [manual_month, manual_asset, float(manual_amount)]
+            new_manual["amount"] = pd.to_numeric(new_manual["amount"], errors="coerce").fillna(0.0)
+            st.session_state.manual_df = new_manual
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
             st.success("Manual transaction added")
             st.rerun()
@@ -932,7 +964,8 @@ with asset_tab:
             elif cleaned_name in assets_df["name"].tolist():
                 st.error("This ETF already exists")
             else:
-                assets_df.loc[len(assets_df)] = {
+                new_assets = st.session_state.assets_df.copy()
+                new_assets.loc[len(new_assets)] = {
                     "name": cleaned_name,
                     "category": "ETF",
                     "subcategory": new_subcategory,
@@ -940,19 +973,23 @@ with asset_tab:
                     "pac": float(new_pac),
                     "active": "Yes",
                 }
-                month_end_df.loc[len(month_end_df)] = {"month": first_month, "asset": cleaned_name, "value": float(first_end_value)}
+                new_me = st.session_state.month_end_df.copy()
+                new_me.loc[len(new_me)] = {"month": first_month, "asset": cleaned_name, "value": float(first_end_value)}
+                new_me["value"] = pd.to_numeric(new_me["value"], errors="coerce").fillna(0.0)
+
+                new_pac_df = st.session_state.pac_df.copy()
                 for month in MONTHS:
                     if month_sort_value(month) >= month_sort_value(first_month):
-                        pac_df.loc[len(pac_df)] = {
+                        new_pac_df.loc[len(new_pac_df)] = {
                             "month": month,
                             "asset": cleaned_name,
                             "mode": "Auto" if float(new_pac) > 0 else "No",
                             "amount": float(new_pac),
                         }
 
-                st.session_state.assets_df = assets_df
-                st.session_state.month_end_df = month_end_df
-                st.session_state.pac_df = pac_df
+                st.session_state.assets_df = new_assets
+                st.session_state.month_end_df = new_me
+                st.session_state.pac_df = new_pac_df
                 st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
                 st.success(f"{cleaned_name} added to portfolio")
                 st.rerun()
