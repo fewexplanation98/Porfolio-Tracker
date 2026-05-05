@@ -387,19 +387,22 @@ def extract_etf_values_from_image(image_bytes: bytes, etf_assets):
         try:
             ocr_text = run_tesseract_ocr(processed, psm)
         except FileNotFoundError:
-            try:
-                vision_lines = run_google_vision_lines(processed)
+            if get_storage_backend() == "google_sheets":
+                try:
+                    vision_lines = run_google_vision_lines(processed)
+                except Exception as exc:
+                    return None, None, f"Google Vision OCR failed: {exc}"
                 parsed_rows = parse_ocr_pairs("\n".join(vision_lines))
                 matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
                 return matched, unmatched, None
-            except Exception:
-                try:
-                    rapidocr_lines = run_rapidocr_lines(processed)
-                except Exception as exc:
-                    return None, None, f"OCR fallback failed: {exc}"
-                parsed_rows = parse_ocr_pairs("\n".join(rapidocr_lines))
-                matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
-                return matched, unmatched, None
+
+            try:
+                rapidocr_lines = run_rapidocr_lines(processed)
+            except Exception as exc:
+                return None, None, f"OCR fallback failed: {exc}"
+            parsed_rows = parse_ocr_pairs("\n".join(rapidocr_lines))
+            matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
+            return matched, unmatched, None
         except subprocess.CalledProcessError as exc:
             return None, None, exc.stderr.strip() or "OCR failed."
         parsed_rows = parse_ocr_pairs(ocr_text)
