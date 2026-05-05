@@ -295,12 +295,37 @@ def get_rapidocr_engine():
     return RapidOCR()
 
 
+@st.cache_resource
+def get_google_vision_client():
+    from google.cloud import vision
+    from google.oauth2 import service_account
+
+    service_account_info = dict(st.secrets["google_service_account"])
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
+    return vision.ImageAnnotatorClient(credentials=credentials)
+
+
 def run_rapidocr_lines(image: Image.Image):
     engine = get_rapidocr_engine()
     result, _ = engine(np.array(image))
     if not result:
         return []
     return [item[1] for item in result if len(item) >= 2 and item[1]]
+
+
+def run_google_vision_lines(image: Image.Image):
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+
+    from google.cloud import vision
+
+    client = get_google_vision_client()
+    response = client.document_text_detection(image=vision.Image(content=buffered.getvalue()))
+    if response.error.message:
+        raise RuntimeError(response.error.message)
+    if not response.full_text_annotation or not response.full_text_annotation.text:
+        return []
+    return response.full_text_annotation.text.splitlines()
 
 
 def parse_ocr_pairs(ocr_text: str):
@@ -363,12 +388,18 @@ def extract_etf_values_from_image(image_bytes: bytes, etf_assets):
             ocr_text = run_tesseract_ocr(processed, psm)
         except FileNotFoundError:
             try:
-                rapidocr_lines = run_rapidocr_lines(processed)
-            except Exception as exc:
-                return None, None, f"OCR fallback failed: {exc}"
-            parsed_rows = parse_ocr_pairs("\n".join(rapidocr_lines))
-            matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
-            return matched, unmatched, None
+                vision_lines = run_google_vision_lines(processed)
+                parsed_rows = parse_ocr_pairs("\n".join(vision_lines))
+                matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
+                return matched, unmatched, None
+            except Exception:
+                try:
+                    rapidocr_lines = run_rapidocr_lines(processed)
+                except Exception as exc:
+                    return None, None, f"OCR fallback failed: {exc}"
+                parsed_rows = parse_ocr_pairs("\n".join(rapidocr_lines))
+                matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
+                return matched, unmatched, None
         except subprocess.CalledProcessError as exc:
             return None, None, exc.stderr.strip() or "OCR failed."
         parsed_rows = parse_ocr_pairs(ocr_text)
