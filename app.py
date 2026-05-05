@@ -1334,7 +1334,15 @@ with update_tab:
     with st.form("month_end_form"):
         month_end_inputs = {}
         cols = st.columns(3)
-        for i, asset in enumerate(all_assets):
+        savings_assets = [asset for asset in all_assets if asset == "Savings"]
+        ranked_etf_assets = sorted(
+            [asset for asset in all_assets if asset != "Savings"],
+            key=lambda asset: month_end_map.get((draft_month, asset), 0),
+            reverse=True,
+        )
+        ordered_assets = savings_assets + ranked_etf_assets
+
+        for i, asset in enumerate(ordered_assets):
             current_value = month_end_map.get((draft_month, asset), 0)
             with cols[i % 3]:
                 month_end_inputs[asset] = st.number_input(
