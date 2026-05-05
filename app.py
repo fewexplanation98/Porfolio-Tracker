@@ -4,6 +4,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import io
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+from difflib import SequenceMatcher
+from PIL import Image, ImageEnhance
 
 st.set_page_config(page_title="Portfolio Tracker", page_icon="📈", layout="wide")
 
@@ -67,10 +73,25 @@ MONTH_MAP = {
     "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
 }
 
+APP_DIR = Path(__file__).resolve().parent
+STATE_FILE = APP_DIR / "portfolio_state.json"
+LEGACY_XLSX_FILE = APP_DIR / "data.xlsx"
+GOOGLE_STATE_WORKSHEET = "portfolio_state"
+
 
 def month_sort_value(label: str) -> int:
     month, year = label.split("/")
     return (2000 + int(year)) * 100 + MONTH_MAP[month]
+
+
+def month_label_to_timestamp(label: str) -> pd.Timestamp:
+    month, year = label.split("/")
+    return pd.Timestamp(year=2000 + int(year), month=MONTH_MAP[month], day=1)
+
+
+def month_value_to_label(value) -> str:
+    ts = pd.to_datetime(value)
+    return ts.strftime("%b/%y")
 
 
 def eur0(value: float) -> str:
@@ -117,6 +138,225 @@ def seed_data():
     return assets_df, month_end_df, manual_df, pac_df
 
 
+def ensure_pac_rows(assets_df, pac_df):
+    pac_df = pac_df.copy()
+    if pac_df.empty:
+        pac_df = pd.DataFrame(columns=["month", "asset", "mode", "amount"])
+
+    existing = set()
+    if not pac_df.empty:
+        existing = set(zip(pac_df["month"], pac_df["asset"]))
+
+    pac_rows = []
+    etf_df = assets_df[assets_df["category"] == "ETF"]
+    for month in MONTHS:
+        if month_sort_value(month) < month_sort_value("Apr/26"):
+            continue
+        for _, row in etf_df.iterrows():
+            key = (month, row["name"])
+            if key in existing:
+                continue
+            pac_rows.append(
+                {
+                    "month": month,
+                    "asset": row["name"],
+                    "mode": "Auto" if float(row["pac"]) > 0 else "No",
+                    "amount": float(row["pac"]),
+                }
+            )
+
+    if pac_rows:
+        pac_df = pd.concat([pac_df, pd.DataFrame(pac_rows)], ignore_index=True)
+
+    return pac_df
+
+
+def normalize_state_frames(assets_df, month_end_df, manual_df, pac_df):
+    assets_df = assets_df.copy()
+    month_end_df = month_end_df.copy()
+    manual_df = manual_df.copy()
+    pac_df = pac_df.copy()
+
+    if assets_df.empty:
+        assets_df = pd.DataFrame(columns=["name", "category", "subcategory", "bucket", "pac", "active"])
+    if month_end_df.empty:
+        month_end_df = pd.DataFrame(columns=["month", "asset", "value"])
+    if manual_df.empty:
+        manual_df = pd.DataFrame(columns=["month", "asset", "amount"])
+    if pac_df.empty:
+        pac_df = pd.DataFrame(columns=["month", "asset", "mode", "amount"])
+
+    assets_df["pac"] = pd.to_numeric(assets_df.get("pac"), errors="coerce").fillna(0.0)
+
+    if not month_end_df.empty:
+        month_end_df["value"] = pd.to_numeric(month_end_df["value"], errors="coerce").fillna(0.0)
+        month_end_df["sort"] = month_end_df["month"].apply(month_sort_value)
+        month_end_df = month_end_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
+    if not manual_df.empty:
+        manual_df["amount"] = pd.to_numeric(manual_df["amount"], errors="coerce").fillna(0.0)
+        manual_df["sort"] = manual_df["month"].apply(month_sort_value)
+        manual_df = manual_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
+    pac_df = ensure_pac_rows(assets_df, pac_df)
+    if not pac_df.empty:
+        pac_df["amount"] = pd.to_numeric(pac_df["amount"], errors="coerce").fillna(0.0)
+        pac_df["sort"] = pac_df["month"].apply(month_sort_value)
+        pac_df = pac_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
+    return assets_df, month_end_df, manual_df, pac_df
+
+
+def normalize_asset_name(value: str) -> str:
+    value = str(value or "").lower()
+    value = value.replace("&", " and ")
+    value = re.sub(r"\b(usd|eur|acc|brokerage|etfs|topics)\b", " ", value)
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    if value.startswith("al big data"):
+        value = value.replace("al big data", "ai big data", 1)
+    return value
+
+
+def parse_euro_amount(value: str):
+    match = re.search(r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*€?", value)
+    if not match:
+        return None
+    raw = match.group(1).strip()
+    if "." in raw and "," in raw:
+        normalized = raw.replace(".", "").replace(",", ".")
+    elif "," in raw:
+        decimals = raw.split(",")[-1]
+        normalized = raw.replace(".", "").replace(",", ".") if len(decimals) <= 2 else raw.replace(",", "")
+    elif "." in raw:
+        decimals = raw.split(".")[-1]
+        normalized = raw.replace(".", "") if len(decimals) == 3 else raw
+    else:
+        normalized = raw
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def looks_like_asset_line(value: str) -> bool:
+    cleaned = value.strip()
+    if not cleaned:
+        return False
+    if "%" in cleaned:
+        return False
+    if parse_euro_amount(cleaned) is not None and " " not in cleaned:
+        return False
+    lowered = cleaned.lower()
+    if lowered in {"brokerage", "etfs and topics"}:
+        return False
+    return any(ch.isalpha() for ch in cleaned)
+
+
+def clean_ocr_line(value: str) -> str:
+    value = re.sub(r"^[^A-Za-z0-9]+", "", value.strip())
+    value = re.sub(r"[^A-Za-z0-9€%&().,\-+\s]+$", "", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def preprocess_etf_image(image_bytes: bytes) -> Image.Image:
+    image = Image.open(io.BytesIO(image_bytes)).convert("L")
+    width, height = image.size
+    cropped = image.crop((int(width * 0.04), int(height * 0.08), int(width * 0.78), int(height * 0.97)))
+    enlarged = cropped.resize((cropped.width * 2, cropped.height * 2))
+    contrasted = ImageEnhance.Contrast(enlarged).enhance(2.8)
+    sharpened = ImageEnhance.Sharpness(contrasted).enhance(2.0)
+    thresholded = sharpened.point(lambda px: 255 if px > 85 else 0)
+    return thresholded
+
+
+def run_tesseract_ocr(image: Image.Image, psm: int) -> str:
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        temp_path = Path(tmp.name)
+    try:
+        image.save(temp_path)
+        result = subprocess.run(
+            ["tesseract", str(temp_path), "stdout", "--psm", str(psm)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def parse_ocr_pairs(ocr_text: str):
+    rows = []
+    pending_name = None
+    for raw_line in ocr_text.splitlines():
+        line = clean_ocr_line(raw_line)
+        if not line:
+            continue
+        if "%" in line:
+            continue
+        amount = parse_euro_amount(line)
+        if amount is not None and pending_name:
+            rows.append({"raw_name": pending_name, "value": amount})
+            pending_name = None
+            continue
+        if looks_like_asset_line(line):
+            pending_name = line
+    return rows
+
+
+def match_extracted_assets(extracted_rows, etf_assets):
+    normalized_assets = {asset: normalize_asset_name(asset) for asset in etf_assets}
+    matched = []
+    unmatched = []
+    used_assets = set()
+
+    for row in extracted_rows:
+        raw_name = row["raw_name"]
+        normalized_raw = normalize_asset_name(raw_name)
+        scored = []
+        for asset, normalized_asset in normalized_assets.items():
+            score = SequenceMatcher(None, normalized_raw, normalized_asset).ratio()
+            if normalized_raw in normalized_asset or normalized_asset in normalized_raw:
+                score += 0.1
+            scored.append((score, asset))
+        scored.sort(reverse=True)
+        best_score, best_asset = scored[0]
+        if best_score >= 0.6 and best_asset not in used_assets:
+            used_assets.add(best_asset)
+            matched.append(
+                {
+                    "asset": best_asset,
+                    "raw_name": raw_name,
+                    "value": row["value"],
+                    "match_score": round(min(best_score, 1.0), 2),
+                }
+            )
+        else:
+            unmatched.append({"raw_name": raw_name, "value": row["value"]})
+
+    return matched, unmatched
+
+
+def extract_etf_values_from_image(image_bytes: bytes, etf_assets):
+    processed = preprocess_etf_image(image_bytes)
+    attempts = []
+    for psm in (4, 6, 11):
+        try:
+            ocr_text = run_tesseract_ocr(processed, psm)
+        except FileNotFoundError:
+            return None, None, "Tesseract non trovato sul sistema."
+        except subprocess.CalledProcessError as exc:
+            return None, None, exc.stderr.strip() or "OCR failed."
+        parsed_rows = parse_ocr_pairs(ocr_text)
+        attempts.append((len(parsed_rows), parsed_rows))
+
+    parsed_rows = max(attempts, key=lambda item: item[0])[1] if attempts else []
+    matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
+    return matched, unmatched, None
+
+
 def calc_month_perf(asset, month, month_end_map, pac_map, manual_map):
     idx = MONTHS.index(month)
     if idx == 0:
@@ -133,41 +373,186 @@ def calc_month_perf(asset, month, month_end_map, pac_map, manual_map):
     return None
 
 
-def state_to_json() -> str:
-    """Serialize current session state to JSON string, including backup timestamp."""
-    from datetime import datetime
-    data = {
+def state_payload(backup_ts=None):
+    return {
         "assets": st.session_state.assets_df.to_dict(orient="records"),
         "month_end": st.session_state.month_end_df.to_dict(orient="records"),
         "manual": st.session_state.manual_df.to_dict(orient="records"),
         "pac": st.session_state.pac_df.to_dict(orient="records"),
-        "backup_ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "backup_ts": backup_ts,
     }
+
+
+def state_to_json() -> str:
+    """Serialize current session state to JSON string, including backup timestamp."""
+    from datetime import datetime
+    data = state_payload(backup_ts=datetime.now().strftime("%Y-%m-%d %H:%M"))
     return json.dumps(data, indent=2)
 
 
-# ── FIX 2: enforce correct numeric dtypes after JSON round-trip ───────────────
+def apply_state_payload(data):
+    assets_df = pd.DataFrame(data["assets"])
+    month_end_df = pd.DataFrame(data["month_end"])
+    manual_df = pd.DataFrame(data["manual"])
+    pac_df = pd.DataFrame(data["pac"])
+    assets_df, month_end_df, manual_df, pac_df = normalize_state_frames(
+        assets_df, month_end_df, manual_df, pac_df
+    )
+    st.session_state.assets_df = assets_df
+    st.session_state.month_end_df = month_end_df
+    st.session_state.manual_df = manual_df
+    st.session_state.pac_df = pac_df
+
+
+def get_storage_backend() -> str:
+    try:
+        has_account = "google_service_account" in st.secrets
+        has_sheet = "google_sheet_id" in st.secrets
+        if has_account and has_sheet:
+            return "google_sheets"
+    except Exception:
+        pass
+    return "local_file"
+
+
+def get_storage_label() -> str:
+    if get_storage_backend() == "google_sheets":
+        return f"Google Sheets `{st.secrets['google_sheet_id']}`"
+    return f"Local file `{STATE_FILE.name}`"
+
+
+@st.cache_resource
+def get_google_sheet():
+    import gspread
+
+    service_account_info = dict(st.secrets["google_service_account"])
+    client = gspread.service_account_from_dict(service_account_info)
+    return client.open_by_key(st.secrets["google_sheet_id"])
+
+
+def load_state_from_google_sheet():
+    try:
+        sheet = get_google_sheet()
+        worksheet = sheet.worksheet(GOOGLE_STATE_WORKSHEET)
+        raw = worksheet.acell("B2").value
+        if not raw:
+            return "Google Sheet is empty."
+        return load_state_from_json(raw)
+    except Exception as e:
+        return str(e)
+
+
+def persist_state_to_google_sheet():
+    try:
+        payload = state_payload()
+        sheet = get_google_sheet()
+        try:
+            worksheet = sheet.worksheet(GOOGLE_STATE_WORKSHEET)
+        except Exception:
+            worksheet = sheet.add_worksheet(title=GOOGLE_STATE_WORKSHEET, rows=10, cols=2)
+
+        worksheet.update(
+            "A1:B4",
+            [
+                ["key", "value"],
+                ["state_json", json.dumps(payload)],
+                ["updated_at", pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")],
+                ["source", "streamlit_app"],
+            ],
+        )
+        return None
+    except Exception as e:
+        return str(e)
+
+
+def persist_state_to_disk():
+    try:
+        payload = state_payload()
+        tmp_path = STATE_FILE.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        tmp_path.replace(STATE_FILE)
+        return None
+    except Exception as e:
+        return str(e)
+
+
 def load_state_from_json(raw: str):
     """Load session state from JSON string. Returns error string or None."""
     try:
         data = json.loads(raw)
-        st.session_state.assets_df = pd.DataFrame(data["assets"])
+        apply_state_payload(data)
+        return None
+    except Exception as e:
+        return str(e)
 
-        me = pd.DataFrame(data["month_end"])
-        if not me.empty:
-            me["value"] = pd.to_numeric(me["value"], errors="coerce").fillna(0.0)
-        st.session_state.month_end_df = me
 
-        mn = pd.DataFrame(data["manual"])
-        if not mn.empty:
-            mn["amount"] = pd.to_numeric(mn["amount"], errors="coerce").fillna(0.0)
-        st.session_state.manual_df = mn
+def persist_state():
+    if get_storage_backend() == "google_sheets":
+        return persist_state_to_google_sheet()
+    return persist_state_to_disk()
 
-        pc = pd.DataFrame(data["pac"])
-        if not pc.empty:
-            pc["amount"] = pd.to_numeric(pc["amount"], errors="coerce").fillna(0.0)
-        st.session_state.pac_df = pc
 
+def load_state_from_excel(path: Path):
+    try:
+        assets_src = pd.read_excel(path, sheet_name="Assets")
+        month_end_src = pd.read_excel(path, sheet_name="Month_End")
+        manual_src = pd.read_excel(path, sheet_name="Transactions_Manual")
+        pac_src = pd.read_excel(path, sheet_name="Transactions_PAC")
+
+        assets_df = assets_src.rename(
+            columns={
+                "Asset": "name",
+                "Category": "category",
+                "Subcategory": "subcategory",
+                "Bucket": "bucket",
+                "Monthly_PAC": "pac",
+                "Active?": "active",
+            }
+        )[["name", "category", "subcategory", "bucket", "pac", "active"]]
+
+        month_end_df = month_end_src.rename(
+            columns={"Month": "month", "Asset": "asset", "End_Value": "value"}
+        )[["month", "asset", "value"]]
+        if not month_end_df.empty:
+            month_end_df["month"] = month_end_df["month"].apply(month_value_to_label)
+
+        manual_df = manual_src.rename(
+            columns={"Month": "month", "Asset": "asset", "Amount": "amount"}
+        )[["month", "asset", "amount"]]
+        if not manual_df.empty:
+            manual_df["month"] = manual_df["month"].apply(month_value_to_label)
+
+        pac_rows = []
+        if not pac_src.empty:
+            pac_src = pac_src.copy()
+            pac_src["month"] = pac_src["Month"].apply(month_value_to_label)
+            for (month, asset), group in pac_src.groupby(["month", "Asset"], dropna=False):
+                statuses = {str(v).strip() for v in group["Status"].fillna("Auto").tolist()}
+                planned = pd.to_numeric(group["Planned_Amount"], errors="coerce")
+                actual = pd.to_numeric(group["Actual_Amount"], errors="coerce")
+                flow_used = pd.to_numeric(group["Flow_Used"], errors="coerce")
+
+                if statuses == {"No"}:
+                    mode = "No"
+                    amount = 0.0
+                elif "Edited" in statuses:
+                    mode = "Edited"
+                    amount = float(actual.fillna(flow_used).fillna(planned).fillna(0.0).sum())
+                else:
+                    mode = "Auto"
+                    amount = float(flow_used.fillna(planned).fillna(actual).fillna(0.0).sum())
+
+                pac_rows.append({"month": month, "asset": asset, "mode": mode, "amount": amount})
+
+        pac_df = pd.DataFrame(pac_rows, columns=["month", "asset", "mode", "amount"])
+        apply_state_payload(
+            {
+                "assets": assets_df.to_dict(orient="records"),
+                "month_end": month_end_df.to_dict(orient="records"),
+                "manual": manual_df.to_dict(orient="records"),
+                "pac": pac_df.to_dict(orient="records"),
+            }
+        )
         return None
     except Exception as e:
         return str(e)
@@ -183,22 +568,57 @@ def _latest_data_month() -> str:
     return months_present[-1]
 
 
+def _next_entry_month() -> str:
+    latest = _latest_data_month()
+    latest_idx = MONTHS.index(latest)
+    return MONTHS[min(latest_idx + 1, len(MONTHS) - 1)]
+
+
 if "assets_df" not in st.session_state:
-    assets_df, month_end_df, manual_df, pac_df = seed_data()
-    st.session_state.assets_df = assets_df
-    st.session_state.month_end_df = month_end_df
-    st.session_state.manual_df = manual_df
-    st.session_state.pac_df = pac_df
+    load_err = None
+    if get_storage_backend() == "google_sheets":
+        load_err = load_state_from_google_sheet()
+        if load_err is None:
+            st.session_state.data_source = GOOGLE_STATE_WORKSHEET
+    elif STATE_FILE.exists():
+        load_err = load_state_from_json(STATE_FILE.read_text(encoding="utf-8"))
+        if load_err is None:
+            st.session_state.data_source = STATE_FILE.name
+    if "assets_df" not in st.session_state and LEGACY_XLSX_FILE.exists():
+        load_err = load_state_from_excel(LEGACY_XLSX_FILE)
+        if load_err is None:
+            st.session_state.data_source = LEGACY_XLSX_FILE.name
+            persist_state()
+    if "assets_df" not in st.session_state:
+        assets_df, month_end_df, manual_df, pac_df = seed_data()
+        assets_df, month_end_df, manual_df, pac_df = normalize_state_frames(
+            assets_df, month_end_df, manual_df, pac_df
+        )
+        st.session_state.assets_df = assets_df
+        st.session_state.month_end_df = month_end_df
+        st.session_state.manual_df = manual_df
+        st.session_state.pac_df = pac_df
+        st.session_state.data_source = "seed_data"
+    if load_err:
+        st.session_state.init_load_error = load_err
 
 # track last backup timestamp across downloads
 if "last_backup_ts" not in st.session_state:
     st.session_state.last_backup_ts = None
 if "last_modified_ts" not in st.session_state:
     st.session_state.last_modified_ts = None
+if "data_source" not in st.session_state:
+    st.session_state.data_source = GOOGLE_STATE_WORKSHEET if get_storage_backend() == "google_sheets" else (STATE_FILE.name if STATE_FILE.exists() else "seed_data")
+if "init_load_error" not in st.session_state:
+    st.session_state.init_load_error = None
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 💾 Backup & Restore")
+    st.caption(f"Storage attivo: {get_storage_label()}")
+    st.caption(f"Sorgente iniziale caricata: `{st.session_state.data_source}`")
+    if st.session_state.init_load_error:
+        st.error(f"Init load error: {st.session_state.init_load_error}")
 
     latest_dm = _latest_data_month()
     last_ts = st.session_state.last_backup_ts
@@ -237,10 +657,14 @@ with st.sidebar:
         if err:
             st.error(f"Error loading backup: {err}")
         else:
-            from datetime import datetime
-            st.session_state.last_backup_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-            st.success("Backup restored!")
-            st.rerun()
+            persist_err = persist_state()
+            if persist_err:
+                st.error(f"Auto-save error: {persist_err}")
+            else:
+                from datetime import datetime
+                st.session_state.last_backup_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+                st.success("Backup restored!")
+                st.rerun()
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 assets_df = st.session_state.assets_df.copy()
@@ -366,7 +790,7 @@ with header_right:
     selected_month = st.selectbox(
         "Selected month",
         options=MONTHS,
-        index=MONTHS.index("Mar/26"),
+        index=MONTHS.index(_latest_data_month()),
         label_visibility="collapsed",
     )
 
@@ -843,11 +1267,13 @@ with right_track_col:
 
 st.divider()
 
-update_tab, pac_tab, manual_tab, asset_tab = st.tabs(["Update Month End", "Confirm PAC", "Manual Transaction", "Add ETF"])
+update_tab, import_tab, pac_tab, manual_tab, asset_tab = st.tabs(
+    ["Update Month End", "Import ETF Screenshot", "Confirm PAC", "Manual Transaction", "Add ETF"]
+)
 
 with update_tab:
     st.subheader("Insert month end values")
-    draft_month = st.selectbox("Month to update", options=MONTHS, index=MONTHS.index("Apr/26"), key="draft_month_end")
+    draft_month = st.selectbox("Month to update", options=MONTHS, index=MONTHS.index(_next_entry_month()), key="draft_month_end")
 
     with st.form("month_end_form"):
         month_end_inputs = {}
@@ -855,14 +1281,13 @@ with update_tab:
         for i, asset in enumerate(all_assets):
             current_value = month_end_map.get((draft_month, asset), 0)
             with cols[i % 3]:
-                # ── FIX 1: stable widget key not tied to draft_month ──────────
                 month_end_inputs[asset] = st.number_input(
                     asset,
                     min_value=0.0,
                     value=float(current_value),
                     step=100.0,
                     format="%.2f",
-                    key=f"me_{asset}",          # was: f"month_end_{draft_month}_{asset}"
+                    key=f"month_end_{draft_month}_{asset}",
                 )
 
         save_month_end = st.form_submit_button("Save month end", use_container_width=True)
@@ -878,12 +1303,86 @@ with update_tab:
             new_me["value"] = pd.to_numeric(new_me["value"], errors="coerce").fillna(0.0)
             st.session_state.month_end_df = new_me
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-            st.success(f"Month end saved for {draft_month}")
-            st.rerun()
+            persist_err = persist_state()
+            if persist_err:
+                st.error(f"Auto-save error: {persist_err}")
+            else:
+                st.success(f"Month end saved for {draft_month}")
+                st.rerun()
+
+with import_tab:
+    st.subheader("Import ETF month end from screenshot")
+    st.caption("Upload the broker screenshot with ETF names and values. ETF values are imported for the selected month; Savings stay manual.")
+
+    import_month = st.selectbox(
+        "Month to import",
+        options=MONTHS,
+        index=MONTHS.index(_next_entry_month()),
+        key="import_month_end",
+    )
+    uploaded_etf_image = st.file_uploader(
+        "Upload ETF screenshot",
+        type=["png", "jpg", "jpeg"],
+        key="etf_screenshot_upload",
+    )
+
+    if uploaded_etf_image is not None:
+        image_bytes = uploaded_etf_image.getvalue()
+        st.image(image_bytes, caption="Uploaded screenshot", width=260)
+        matched_rows, unmatched_rows, extract_err = extract_etf_values_from_image(image_bytes, etf_assets)
+
+        if extract_err:
+            st.error(f"Import error: {extract_err}")
+        else:
+            if matched_rows:
+                review_df = pd.DataFrame(
+                    [
+                        {
+                            "Portfolio ETF": row["asset"],
+                            "Screenshot name": row["raw_name"],
+                            "Extracted value": row["value"],
+                            "Match": row["match_score"],
+                        }
+                        for row in matched_rows
+                    ]
+                )
+                st.markdown("##### Extracted ETF values")
+                st.dataframe(review_df, use_container_width=True, hide_index=True)
+
+                if st.button("Import ETF values", use_container_width=True, key="import_etf_values_btn"):
+                    new_me = st.session_state.month_end_df.copy()
+                    for row in matched_rows:
+                        mask = (new_me["month"] == import_month) & (new_me["asset"] == row["asset"])
+                        if mask.any():
+                            new_me.loc[mask, "value"] = float(row["value"])
+                        else:
+                            new_me.loc[len(new_me)] = {
+                                "month": import_month,
+                                "asset": row["asset"],
+                                "value": float(row["value"]),
+                            }
+                    new_me["sort"] = new_me["month"].apply(month_sort_value)
+                    new_me = new_me.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+                    new_me["value"] = pd.to_numeric(new_me["value"], errors="coerce").fillna(0.0)
+                    st.session_state.month_end_df = new_me
+                    st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
+                    persist_err = persist_state()
+                    if persist_err:
+                        st.error(f"Auto-save error: {persist_err}")
+                    else:
+                        st.success(f"Imported {len(matched_rows)} ETF values for {import_month}")
+                        st.rerun()
+            else:
+                st.warning("No ETF values detected from this screenshot.")
+
+            if unmatched_rows:
+                unmatched_df = pd.DataFrame(unmatched_rows)
+                st.markdown("##### Unmatched rows")
+                st.dataframe(unmatched_df, use_container_width=True, hide_index=True)
 
 with pac_tab:
     st.subheader("Confirm monthly PAC")
-    pac_month = st.selectbox("PAC month", options=MONTHS, index=MONTHS.index("Apr/26"), key="draft_pac_month")
+    pac_month = st.selectbox("PAC month", options=MONTHS, index=MONTHS.index(_next_entry_month()), key="draft_pac_month")
     pac_view = pac_df[pac_df["month"] == pac_month].copy().sort_values("asset")
 
     with st.form("pac_form"):
@@ -917,15 +1416,19 @@ with pac_tab:
             st.session_state.pac_df = new_pac
             st.session_state.assets_df = new_assets
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-            st.success(f"PAC saved for {pac_month}")
-            st.rerun()
+            persist_err = persist_state()
+            if persist_err:
+                st.error(f"Auto-save error: {persist_err}")
+            else:
+                st.success(f"PAC saved for {pac_month}")
+                st.rerun()
 
 with manual_tab:
     st.subheader("Add manual transaction")
     with st.form("manual_form"):
         c1, c2, c3 = st.columns(3)
         with c1:
-            manual_month = st.selectbox("Month", options=MONTHS, index=MONTHS.index("Apr/26"))
+            manual_month = st.selectbox("Month", options=MONTHS, index=MONTHS.index(_next_entry_month()))
         with c2:
             manual_asset = st.selectbox("ETF", options=etf_assets)
         with c3:
@@ -938,8 +1441,12 @@ with manual_tab:
             new_manual["amount"] = pd.to_numeric(new_manual["amount"], errors="coerce").fillna(0.0)
             st.session_state.manual_df = new_manual
             st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-            st.success("Manual transaction added")
-            st.rerun()
+            persist_err = persist_state()
+            if persist_err:
+                st.error(f"Auto-save error: {persist_err}")
+            else:
+                st.success("Manual transaction added")
+                st.rerun()
 
 with asset_tab:
     st.subheader("Add ETF to portfolio")
@@ -952,7 +1459,7 @@ with asset_tab:
             new_subcategory = st.selectbox("Subcategory", ["ETF Stock", "ETF Bond", "ETF Gold"])
             new_bucket = st.selectbox("Bucket", ["Stocks", "Defensive"])
         with c2:
-            first_month = st.selectbox("First month", options=MONTHS, index=MONTHS.index("Apr/26"))
+            first_month = st.selectbox("First month", options=MONTHS, index=MONTHS.index(_next_entry_month()))
             first_end_value = st.number_input("First end value", min_value=0.0, step=100.0, format="%.2f")
             new_pac = st.number_input("Monthly PAC", min_value=0.0, step=10.0, format="%.2f")
 
@@ -991,5 +1498,9 @@ with asset_tab:
                 st.session_state.month_end_df = new_me
                 st.session_state.pac_df = new_pac_df
                 st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-                st.success(f"{cleaned_name} added to portfolio")
-                st.rerun()
+                persist_err = persist_state()
+                if persist_err:
+                    st.error(f"Auto-save error: {persist_err}")
+                else:
+                    st.success(f"{cleaned_name} added to portfolio")
+                    st.rerun()
