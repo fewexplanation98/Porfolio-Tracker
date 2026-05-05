@@ -4,3 +4,4 @@ openpyxl>=3.1
 plotly>=5.20
 Pillow>=10.0
 gspread>=6.0
+rapidocr_onnxruntime>=1.4

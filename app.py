@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from difflib import SequenceMatcher
+import numpy as np
 from PIL import Image, ImageEnhance
 
 st.set_page_config(page_title="Portfolio Tracker", page_icon="📈", layout="wide")
@@ -287,6 +288,21 @@ def run_tesseract_ocr(image: Image.Image, psm: int) -> str:
         temp_path.unlink(missing_ok=True)
 
 
+@st.cache_resource
+def get_rapidocr_engine():
+    from rapidocr_onnxruntime import RapidOCR
+
+    return RapidOCR()
+
+
+def run_rapidocr_lines(image: Image.Image):
+    engine = get_rapidocr_engine()
+    result, _ = engine(np.array(image))
+    if not result:
+        return []
+    return [item[1] for item in result if len(item) >= 2 and item[1]]
+
+
 def parse_ocr_pairs(ocr_text: str):
     rows = []
     pending_name = None
@@ -346,7 +362,13 @@ def extract_etf_values_from_image(image_bytes: bytes, etf_assets):
         try:
             ocr_text = run_tesseract_ocr(processed, psm)
         except FileNotFoundError:
-            return None, None, "Tesseract non trovato sul sistema."
+            try:
+                rapidocr_lines = run_rapidocr_lines(processed)
+            except Exception as exc:
+                return None, None, f"OCR fallback failed: {exc}"
+            parsed_rows = parse_ocr_pairs("\n".join(rapidocr_lines))
+            matched, unmatched = match_extracted_assets(parsed_rows, etf_assets)
+            return matched, unmatched, None
         except subprocess.CalledProcessError as exc:
             return None, None, exc.stderr.strip() or "OCR failed."
         parsed_rows = parse_ocr_pairs(ocr_text)
