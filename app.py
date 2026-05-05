@@ -1323,8 +1323,8 @@ with right_track_col:
 
 st.divider()
 
-update_tab, import_tab, pac_tab, manual_tab, asset_tab = st.tabs(
-    ["Update Month End", "Import ETF Screenshot", "Confirm PAC", "Manual Transaction", "Add ETF"]
+update_tab, pac_tab, manual_tab, asset_tab = st.tabs(
+    ["Update Month End", "Confirm PAC", "Manual Transaction", "Add ETF"]
 )
 
 with update_tab:
@@ -1365,76 +1365,6 @@ with update_tab:
             else:
                 st.success(f"Month end saved for {draft_month}")
                 st.rerun()
-
-with import_tab:
-    st.subheader("Import ETF month end from screenshot")
-    st.caption("Upload the broker screenshot with ETF names and values. ETF values are imported for the selected month; Savings stay manual.")
-
-    import_month = st.selectbox(
-        "Month to import",
-        options=MONTHS,
-        index=MONTHS.index(_next_entry_month()),
-        key="import_month_end",
-    )
-    uploaded_etf_image = st.file_uploader(
-        "Upload ETF screenshot",
-        type=["png", "jpg", "jpeg"],
-        key="etf_screenshot_upload",
-    )
-
-    if uploaded_etf_image is not None:
-        image_bytes = uploaded_etf_image.getvalue()
-        st.image(image_bytes, caption="Uploaded screenshot", width=260)
-        matched_rows, unmatched_rows, extract_err = extract_etf_values_from_image(image_bytes, etf_assets)
-
-        if extract_err:
-            st.error(f"Import error: {extract_err}")
-        else:
-            if matched_rows:
-                review_df = pd.DataFrame(
-                    [
-                        {
-                            "Portfolio ETF": row["asset"],
-                            "Screenshot name": row["raw_name"],
-                            "Extracted value": row["value"],
-                            "Match": row["match_score"],
-                        }
-                        for row in matched_rows
-                    ]
-                )
-                st.markdown("##### Extracted ETF values")
-                st.dataframe(review_df, use_container_width=True, hide_index=True)
-
-                if st.button("Import ETF values", use_container_width=True, key="import_etf_values_btn"):
-                    new_me = st.session_state.month_end_df.copy()
-                    for row in matched_rows:
-                        mask = (new_me["month"] == import_month) & (new_me["asset"] == row["asset"])
-                        if mask.any():
-                            new_me.loc[mask, "value"] = float(row["value"])
-                        else:
-                            new_me.loc[len(new_me)] = {
-                                "month": import_month,
-                                "asset": row["asset"],
-                                "value": float(row["value"]),
-                            }
-                    new_me["sort"] = new_me["month"].apply(month_sort_value)
-                    new_me = new_me.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
-                    new_me["value"] = pd.to_numeric(new_me["value"], errors="coerce").fillna(0.0)
-                    st.session_state.month_end_df = new_me
-                    st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-                    persist_err = persist_state()
-                    if persist_err:
-                        st.error(f"Auto-save error: {persist_err}")
-                    else:
-                        st.success(f"Imported {len(matched_rows)} ETF values for {import_month}")
-                        st.rerun()
-            else:
-                st.warning("No ETF values detected from this screenshot.")
-
-            if unmatched_rows:
-                unmatched_df = pd.DataFrame(unmatched_rows)
-                st.markdown("##### Unmatched rows")
-                st.dataframe(unmatched_df, use_container_width=True, hide_index=True)
 
 with pac_tab:
     st.subheader("Confirm monthly PAC")
