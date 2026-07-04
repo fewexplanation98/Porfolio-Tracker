@@ -430,6 +430,18 @@ def calc_month_perf(asset, month, month_end_map, pac_map, manual_map):
     return None
 
 
+def calc_month_value_change(asset, month, month_end_map):
+    idx = MONTHS.index(month)
+    if idx == 0:
+        return None
+    prev = MONTHS[idx - 1]
+    end = month_end_map.get((month, asset), 0)
+    prev_end = month_end_map.get((prev, asset), 0)
+    if prev_end > 0 and end > 0:
+        return (end - prev_end) / prev_end * 100
+    return None
+
+
 def state_payload(backup_ts=None):
     return {
         "assets": st.session_state.assets_df.to_dict(orient="records"),
@@ -1151,6 +1163,20 @@ if not trend_df.empty:
     fig_combo.update_xaxes(showgrid=False)
     st.plotly_chart(fig_combo, use_container_width=True, config={"displayModeBar": False})
 
+perf_mode = st.radio(
+    "ETF monthly metric",
+    ["Value change", "Flow-adjusted approx"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
+
+def calc_selected_month_metric(asset, month):
+    if perf_mode == "Flow-adjusted approx":
+        return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
+    return calc_month_value_change(asset, month, month_end_map)
+
+
 left_perf_col, right_track_col = st.columns([0.52, 0.48], vertical_alignment="top")
 
 etf_perf_table = []
@@ -1160,10 +1186,10 @@ last_data_idx = max(
 )
 months_5m_spark = MONTHS[max(0, last_data_idx - 4): last_data_idx + 1]
 for asset in etf_assets:
-    current_perf = calc_month_perf(asset, selected_month, month_end_map, pac_map, manual_map)
+    current_perf = calc_selected_month_metric(asset, selected_month)
     spark_vals, spark_months = [], []
     for m in months_5m_spark:
-        p = calc_month_perf(asset, m, month_end_map, pac_map, manual_map)
+        p = calc_selected_month_metric(asset, m)
         if p is not None:
             spark_vals.append(p)
             spark_months.append(m)
@@ -1180,8 +1206,8 @@ for asset in etf_assets:
 etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] is None else x["current_perf"], reverse=True)
 
 with left_perf_col:
-    st.subheader("ETF Monthly Performance")
-    st.caption("Compact monthly snapshot")
+    st.subheader("ETF Monthly Move")
+    st.caption("Value change by default. Flow-adjusted mode subtracts monthly buys/sells.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1273,7 +1299,7 @@ with left_perf_col:
                 st.caption("No 5M data")
 
 with right_track_col:
-    st.subheader("MoM ETF Performance Track")
+    st.subheader("MoM ETF Track")
 
     months_with_data = [m for m in MONTHS if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)]
 
@@ -1313,7 +1339,7 @@ with right_track_col:
     mom_data = []
     for asset in selected_track_etfs:
         for m in months_to_show:
-            p = calc_month_perf(asset, m, month_end_map, pac_map, manual_map)
+            p = calc_selected_month_metric(asset, m)
             if p is not None:
                 mom_data.append({"Month": m, "Asset": asset, "Perf": p})
 
