@@ -16,13 +16,14 @@ st.set_page_config(page_title="Portfolio Tracker", page_icon="📈", layout="wid
 
 ASSETS = [
     {"name": "Savings", "category": "Savings", "subcategory": "Savings", "bucket": "Savings", "pac": 0, "active": "No"},
-    {"name": "Core MSCI World", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 640, "active": "Yes"},
-    {"name": "AI & Big Data", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 160, "active": "Yes"},
-    {"name": "Physical Gold", "category": "ETF", "subcategory": "ETF Gold", "bucket": "Defensive", "pac": 108, "active": "Yes"},
-    {"name": "Global Gov Bond", "category": "ETF", "subcategory": "ETF Bond", "bucket": "Defensive", "pac": 80, "active": "Yes"},
-    {"name": "Core EUR Corp Bond", "category": "ETF", "subcategory": "ETF Bond", "bucket": "Defensive", "pac": 108, "active": "Yes"},
-    {"name": "MSCI World Value", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 180, "active": "Yes"},
-    {"name": "MSCI EM", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 164, "active": "Yes"},
+    {"name": "Core MSCI World", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 1020, "active": "Yes"},
+    {"name": "AI & Big Data", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 224, "active": "Yes"},
+    {"name": "Physical Gold", "category": "ETF", "subcategory": "ETF Gold", "bucket": "Defensive", "pac": 120, "active": "Yes"},
+    {"name": "Global Gov Bond", "category": "ETF", "subcategory": "ETF Bond", "bucket": "Defensive", "pac": 0, "active": "Yes"},
+    {"name": "Euro Inflation Linked Gov Bond", "category": "ETF", "subcategory": "ETF Bond", "bucket": "Defensive", "pac": 28, "active": "Yes"},
+    {"name": "Core EUR Corp Bond", "category": "ETF", "subcategory": "ETF Bond", "bucket": "Defensive", "pac": 32, "active": "Yes"},
+    {"name": "MSCI World Value", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 268, "active": "Yes"},
+    {"name": "MSCI EM", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 248, "active": "Yes"},
     {"name": "Defence Tech", "category": "ETF", "subcategory": "ETF Stock", "bucket": "Stocks", "pac": 60, "active": "Yes"},
 ]
 
@@ -942,8 +943,7 @@ st.write("")
 p1, p2, p3 = st.columns([0.92, 0.92, 1.46], vertical_alignment="top")
 
 with p1:
-    st.subheader("ETF vs Savings")
-    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+    st.markdown("<h3 style='height:72px; margin:0; display:flex; align-items:flex-start;'>ETF vs Savings</h3>", unsafe_allow_html=True)
     split_df = pd.DataFrame({"Type": ["ETF", "Savings"], "Value": [etf_total, savings_total]})
     fig_split = go.Figure(data=[go.Pie(
         labels=split_df["Type"],
@@ -967,8 +967,7 @@ with p1:
     st.plotly_chart(fig_split, use_container_width=True, config={"displayModeBar": False})
 
 with p2:
-    st.subheader("ETF Stock vs Defensive")
-    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+    st.markdown("<h3 style='height:72px; margin:0; display:flex; align-items:flex-start;'>ETF Stock vs<br>Defensive</h3>", unsafe_allow_html=True)
     bucket_df = summary_df[summary_df["Category"] == "ETF"].groupby("Bucket")["End Value"].sum().reset_index()
     bucket_df["Bucket"] = pd.Categorical(bucket_df["Bucket"], categories=["Stocks", "Defensive"], ordered=True)
     bucket_df = bucket_df.sort_values("Bucket")
@@ -994,7 +993,7 @@ with p2:
     st.plotly_chart(fig_bucket, use_container_width=True, config={"displayModeBar": False})
 
 with p3:
-    st.markdown("<h3 style='text-align:center; margin:0 0 18px 0;'>ETF Split</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='height:72px; margin:0; display:flex; align-items:flex-start; justify-content:center;'>ETF Split</h3>", unsafe_allow_html=True)
     pie_df = summary_df[(summary_df["Category"] == "ETF") & (summary_df["End Value"] > 0)][["Asset", "End Value"]].copy()
     pie_colors = {
         "Core MSCI World": "#86c5f8",
@@ -1004,22 +1003,31 @@ with p3:
         "MSCI EM": "#7ae39d",
         "Core EUR Corp Bond": "#33b4ad",
         "Global Gov Bond": "#f4c95d",
+        "Euro Inflation Linked Gov Bond": "#8b5cf6",
         "Defence Tech": "#ff9800",
     }
     pie_df["Color"] = pie_df["Asset"].map(pie_colors)
+    etf_split_total = pie_df["End Value"].sum()
+    pie_df["Share"] = pie_df["End Value"] / etf_split_total * 100 if etf_split_total else 0
+    pie_df["Chart Label"] = pie_df["Share"].apply(lambda value: f"{value:.1f}%" if value >= 5 else "")
     fig_pie = go.Figure(data=[go.Pie(
         labels=pie_df["Asset"],
         values=pie_df["End Value"],
         hole=0.58,
         sort=False,
-        textinfo="percent",
+        text=pie_df["Chart Label"],
+        textinfo="text",
+        textposition="inside",
         textfont_size=12,
+        insidetextorientation="horizontal",
         marker=dict(colors=pie_df["Color"]),
-        showlegend=False
+        showlegend=False,
+        customdata=[eur0(value) for value in pie_df["End Value"]],
+        hovertemplate="%{label}<br>%{customdata}<br>%{percent}<extra></extra>",
     )])
     fig_pie.update_layout(
         height=300,
-        margin=dict(l=0, r=0, t=34, b=0),
+        margin=dict(l=0, r=0, t=34, b=28),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
@@ -1028,18 +1036,22 @@ with p3:
     legend_items = []
     for _, r in pie_df.iterrows():
         legend_items.append(
-            f"<div style='display:flex; align-items:center; gap:8px; min-width:0; white-space:nowrap;'><span style='display:inline-block; width:12px; height:12px; border-radius:0; background:{r['Color']};'></span><span style='font-size:11px; color:#e5e7eb;'>{r['Asset']}</span></div>"
+            f"<div title='{r['Asset']}' style='display:grid; grid-template-columns:12px minmax(0,1fr) auto; align-items:center; gap:8px; min-width:0;'><span style='display:inline-block; width:12px; height:12px; border-radius:0; background:{r['Color']};'></span><span style='font-size:11px; color:#e5e7eb; line-height:1.18; white-space:normal;'>{r['Asset']}</span><span style='font-size:10px; color:#94a3b8; white-space:nowrap;'>{r['Share']:.2f}%</span></div>"
         )
     legend_html = "".join(legend_items)
     st.markdown(
-        f"<div style='display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px 18px; margin-top:2px; width:100%;'>{legend_html}</div>",
+        f"<div style='display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px 22px; margin-top:2px; width:100%;'>{legend_html}</div>",
         unsafe_allow_html=True,
     )
 
 st.subheader("Portfolio Trend MoM")
 
 trend_rows = []
-for i, month in enumerate(MONTHS[: selected_idx + 1]):
+trend_months = [
+    month for month in MONTHS[: selected_idx + 1]
+    if not month_end_df.loc[month_end_df["month"] == month].empty
+]
+for i, month in enumerate(trend_months):
     total = month_end_df.loc[month_end_df["month"] == month, "value"].sum()
     savings = month_end_df.loc[(month_end_df["month"] == month) & (month_end_df["asset"] == "Savings"), "value"].sum()
     etf = total - savings
