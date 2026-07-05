@@ -1,0 +1,1187 @@
+{
+  "assets": [
+    {
+      "name": "Savings",
+      "category": "Savings",
+      "subcategory": "Savings",
+      "bucket": "Savings",
+      "pac": 0.0,
+      "active": "No"
+    },
+    {
+      "name": "Core MSCI World",
+      "category": "ETF",
+      "subcategory": "ETF Stock",
+      "bucket": "Stocks",
+      "pac": 1020.0,
+      "active": "Yes"
+    },
+    {
+      "name": "AI & Big Data",
+      "category": "ETF",
+      "subcategory": "ETF Stock",
+      "bucket": "Stocks",
+      "pac": 224.0,
+      "active": "Yes"
+    },
+    {
+      "name": "Physical Gold",
+      "category": "ETF",
+      "subcategory": "ETF Gold",
+      "bucket": "Defensive",
+      "pac": 120.0,
+      "active": "Yes"
+    },
+    {
+      "name": "Global Gov Bond",
+      "category": "ETF",
+      "subcategory": "ETF Bond",
+      "bucket": "Defensive",
+      "pac": 0.0,
+      "active": "Yes"
+    },
+    {
+      "name": "Euro Inflation Linked Gov Bond",
+      "category": "ETF",
+      "subcategory": "ETF Bond",
+      "bucket": "Defensive",
+      "pac": 28.0,
+      "active": "Yes"
+    },
+    {
+      "name": "Core EUR Corp Bond",
+      "category": "ETF",
+      "subcategory": "ETF Bond",
+      "bucket": "Defensive",
+      "pac": 32.0,
+      "active": "Yes"
+    },
+    {
+      "name": "MSCI World Value",
+      "category": "ETF",
+      "subcategory": "ETF Stock",
+      "bucket": "Stocks",
+      "pac": 268.0,
+      "active": "Yes"
+    },
+    {
+      "name": "MSCI EM",
+      "category": "ETF",
+      "subcategory": "ETF Stock",
+      "bucket": "Stocks",
+      "pac": 248.0,
+      "active": "Yes"
+    },
+    {
+      "name": "Defence Tech",
+      "category": "ETF",
+      "subcategory": "ETF Stock",
+      "bucket": "Stocks",
+      "pac": 60.0,
+      "active": "Yes"
+    }
+  ],
+  "month_end": [
+    {
+      "month": "Oct/25",
+      "asset": "Savings",
+      "value": 34010.01
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Core MSCI World",
+      "value": 11058.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "AI & Big Data",
+      "value": 3265.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Physical Gold",
+      "value": 1792.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Global Gov Bond",
+      "value": 1456.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Core EUR Corp Bond",
+      "value": 1456.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "MSCI World Value",
+      "value": 1439.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "MSCI EM",
+      "value": 1233.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Defence Tech",
+      "value": 483.2
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Savings",
+      "value": 35690.22
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Core MSCI World",
+      "value": 11303.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "AI & Big Data",
+      "value": 3177.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Physical Gold",
+      "value": 1875.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Global Gov Bond",
+      "value": 1470.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Core EUR Corp Bond",
+      "value": 1478.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "MSCI World Value",
+      "value": 1499.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "MSCI EM",
+      "value": 1225.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Defence Tech",
+      "value": 383.76
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Savings",
+      "value": 37889.16
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Core MSCI World",
+      "value": 11866.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "AI & Big Data",
+      "value": 3256.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Physical Gold",
+      "value": 2001.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Global Gov Bond",
+      "value": 1547.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Core EUR Corp Bond",
+      "value": 1534.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "MSCI World Value",
+      "value": 1651.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "MSCI EM",
+      "value": 1306.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Defence Tech",
+      "value": 402.89
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Savings",
+      "value": 38095.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Core MSCI World",
+      "value": 12365.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "AI & Big Data",
+      "value": 3215.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Physical Gold",
+      "value": 2214.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Global Gov Bond",
+      "value": 1568.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1592.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "MSCI World Value",
+      "value": 1824.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "MSCI EM",
+      "value": 1419.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Defence Tech",
+      "value": 452.33
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Savings",
+      "value": 37801.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Core MSCI World",
+      "value": 13001.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "AI & Big Data",
+      "value": 3108.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Physical Gold",
+      "value": 2540.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Global Gov Bond",
+      "value": 1640.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1649.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "MSCI World Value",
+      "value": 2007.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "MSCI EM",
+      "value": 1544.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Defence Tech",
+      "value": 450.32
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Savings",
+      "value": 39883.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Core MSCI World",
+      "value": 13914.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "AI & Big Data",
+      "value": 2970.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Physical Gold",
+      "value": 2493.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Global Gov Bond",
+      "value": 1666.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1679.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "MSCI World Value",
+      "value": 2387.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "MSCI EM",
+      "value": 2033.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Defence Tech",
+      "value": 439.71
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Savings",
+      "value": 38841.59
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Core MSCI World",
+      "value": 15766.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "AI & Big Data",
+      "value": 3675.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Physical Gold",
+      "value": 2553.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Global Gov Bond",
+      "value": 1724.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1785.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "MSCI World Value",
+      "value": 2844.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "MSCI EM",
+      "value": 2470.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Defence Tech",
+      "value": 462.4
+    },
+    {
+      "month": "May/26",
+      "asset": "Savings",
+      "value": 41556.85
+    },
+    {
+      "month": "May/26",
+      "asset": "Core MSCI World",
+      "value": 17209.0
+    },
+    {
+      "month": "May/26",
+      "asset": "AI & Big Data",
+      "value": 4774.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Physical Gold",
+      "value": 2631.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Global Gov Bond",
+      "value": 1795.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1917.0
+    },
+    {
+      "month": "May/26",
+      "asset": "MSCI World Value",
+      "value": 3496.0
+    },
+    {
+      "month": "May/26",
+      "asset": "MSCI EM",
+      "value": 2849.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Defence Tech",
+      "value": 529.99
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Savings",
+      "value": 40549.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Core MSCI World",
+      "value": 18734.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "AI & Big Data",
+      "value": 5019.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Physical Gold",
+      "value": 2484.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Global Gov Bond",
+      "value": 862.59
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "value": 945.27
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Core EUR Corp Bond",
+      "value": 1984.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "MSCI World Value",
+      "value": 3813.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "MSCI EM",
+      "value": 3165.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Defence Tech",
+      "value": 527.95
+    }
+  ],
+  "manual": [
+    {
+      "month": "Oct/25",
+      "asset": "Core MSCI World",
+      "amount": 690.4
+    },
+    {
+      "month": "Oct/25",
+      "asset": "AI & Big Data",
+      "amount": 101.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Physical Gold",
+      "amount": 70.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Oct/25",
+      "asset": "MSCI World Value",
+      "amount": 196.99
+    },
+    {
+      "month": "Oct/25",
+      "asset": "MSCI EM",
+      "amount": 44.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Core MSCI World",
+      "amount": 486.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Physical Gold",
+      "amount": 70.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "MSCI World Value",
+      "amount": 96.0
+    },
+    {
+      "month": "Nov/25",
+      "asset": "MSCI EM",
+      "amount": 44.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Core MSCI World",
+      "amount": 486.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Physical Gold",
+      "amount": 70.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "MSCI World Value",
+      "amount": 96.0
+    },
+    {
+      "month": "Dec/25",
+      "asset": "MSCI EM",
+      "amount": 44.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Core MSCI World",
+      "amount": 486.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Physical Gold",
+      "amount": 70.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "MSCI World Value",
+      "amount": 96.0
+    },
+    {
+      "month": "Jan/26",
+      "asset": "MSCI EM",
+      "amount": 44.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Core MSCI World",
+      "amount": 486.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Physical Gold",
+      "amount": 70.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "MSCI World Value",
+      "amount": 96.0
+    },
+    {
+      "month": "Feb/26",
+      "asset": "MSCI EM",
+      "amount": 44.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Core MSCI World",
+      "amount": 1539.76
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Physical Gold",
+      "amount": 220.99
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Global Gov Bond",
+      "amount": 52.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "Core EUR Corp Bond",
+      "amount": 54.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "MSCI World Value",
+      "amount": 497.0
+    },
+    {
+      "month": "Mar/26",
+      "asset": "MSCI EM",
+      "amount": 645.99
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Core MSCI World",
+      "amount": 500.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Global Gov Bond",
+      "amount": -941.22
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "amount": 940.0
+    }
+  ],
+  "pac": [
+    {
+      "month": "Apr/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 640.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 160.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 108.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Global Gov Bond",
+      "mode": "Auto",
+      "amount": 80.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 108.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 180.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 164.0
+    },
+    {
+      "month": "Apr/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 640.0
+    },
+    {
+      "month": "May/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 160.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 108.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Global Gov Bond",
+      "mode": "Auto",
+      "amount": 80.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 108.0
+    },
+    {
+      "month": "May/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 180.0
+    },
+    {
+      "month": "May/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 164.0
+    },
+    {
+      "month": "May/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Core MSCI World",
+      "mode": "Edited",
+      "amount": 758.66
+    },
+    {
+      "month": "Jun/26",
+      "asset": "AI & Big Data",
+      "mode": "Edited",
+      "amount": 222.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Physical Gold",
+      "mode": "Edited",
+      "amount": 120.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Edited",
+      "amount": 14.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Edited",
+      "amount": 66.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "MSCI World Value",
+      "mode": "Edited",
+      "amount": 264.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "MSCI EM",
+      "mode": "Edited",
+      "amount": 244.0
+    },
+    {
+      "month": "Jun/26",
+      "asset": "Defence Tech",
+      "mode": "Edited",
+      "amount": 53.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Jul/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Aug/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Sep/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Oct/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Nov/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Core MSCI World",
+      "mode": "Auto",
+      "amount": 1020.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "AI & Big Data",
+      "mode": "Auto",
+      "amount": 224.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Physical Gold",
+      "mode": "Auto",
+      "amount": 120.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Global Gov Bond",
+      "mode": "No",
+      "amount": 0.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Euro Inflation Linked Gov Bond",
+      "mode": "Auto",
+      "amount": 28.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Core EUR Corp Bond",
+      "mode": "Auto",
+      "amount": 32.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "MSCI World Value",
+      "mode": "Auto",
+      "amount": 268.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "MSCI EM",
+      "mode": "Auto",
+      "amount": 248.0
+    },
+    {
+      "month": "Dec/26",
+      "asset": "Defence Tech",
+      "mode": "Auto",
+      "amount": 60.0
+    }
+  ],
+  "backup_ts": "2026-07-04 20:39"
+}
