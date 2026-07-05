@@ -209,6 +209,20 @@ def normalize_state_frames(assets_df, month_end_df, manual_df, pac_df):
     return assets_df, month_end_df, manual_df, pac_df
 
 
+def normalize_performance_df(performance_df):
+    performance_df = performance_df.copy()
+    if performance_df.empty:
+        return pd.DataFrame(columns=["month", "asset", "performance"])
+    for col in ["month", "asset", "performance"]:
+        if col not in performance_df.columns:
+            performance_df[col] = np.nan
+    performance_df = performance_df[["month", "asset", "performance"]].copy()
+    performance_df["performance"] = pd.to_numeric(performance_df["performance"], errors="coerce")
+    performance_df = performance_df.dropna(subset=["month", "asset", "performance"])
+    performance_df["sort"] = performance_df["month"].apply(month_sort_value)
+    return performance_df.sort_values(["sort", "asset"]).drop(columns="sort").reset_index(drop=True)
+
+
 def normalize_asset_name(value: str) -> str:
     value = str(value or "").lower()
     value = value.replace("&", " and ")
@@ -461,6 +475,7 @@ def state_payload(backup_ts=None):
         "month_end": st.session_state.month_end_df.to_dict(orient="records"),
         "manual": st.session_state.manual_df.to_dict(orient="records"),
         "pac": st.session_state.pac_df.to_dict(orient="records"),
+        "etf_performance": st.session_state.performance_df.to_dict(orient="records"),
         "backup_ts": backup_ts,
     }
 
@@ -477,6 +492,7 @@ def apply_state_payload(data):
     month_end_df = pd.DataFrame(data["month_end"])
     manual_df = pd.DataFrame(data["manual"])
     pac_df = pd.DataFrame(data["pac"])
+    performance_df = pd.DataFrame(data.get("etf_performance", []))
     assets_df, month_end_df, manual_df, pac_df = normalize_state_frames(
         assets_df, month_end_df, manual_df, pac_df
     )
@@ -484,6 +500,7 @@ def apply_state_payload(data):
     st.session_state.month_end_df = month_end_df
     st.session_state.manual_df = manual_df
     st.session_state.pac_df = pac_df
+    st.session_state.performance_df = normalize_performance_df(performance_df)
 
 
 def get_storage_backend() -> str:
@@ -633,6 +650,7 @@ def load_state_from_excel(path: Path):
                 "month_end": month_end_df.to_dict(orient="records"),
                 "manual": manual_df.to_dict(orient="records"),
                 "pac": pac_df.to_dict(orient="records"),
+                "etf_performance": [],
             }
         )
         return None
@@ -680,6 +698,7 @@ if "assets_df" not in st.session_state:
         st.session_state.month_end_df = month_end_df
         st.session_state.manual_df = manual_df
         st.session_state.pac_df = pac_df
+        st.session_state.performance_df = pd.DataFrame(columns=["month", "asset", "performance"])
         st.session_state.data_source = "seed_data"
     if load_err:
         st.session_state.init_load_error = load_err
@@ -689,6 +708,8 @@ if "last_backup_ts" not in st.session_state:
     st.session_state.last_backup_ts = None
 if "last_modified_ts" not in st.session_state:
     st.session_state.last_modified_ts = None
+if "performance_df" not in st.session_state:
+    st.session_state.performance_df = pd.DataFrame(columns=["month", "asset", "performance"])
 if "data_source" not in st.session_state:
     st.session_state.data_source = GOOGLE_STATE_WORKSHEET if get_storage_backend() == "google_sheets" else (STATE_FILE.name if STATE_FILE.exists() else "seed_data")
 if "init_load_error" not in st.session_state:
@@ -753,6 +774,7 @@ assets_df = st.session_state.assets_df.copy()
 month_end_df = st.session_state.month_end_df.copy()
 manual_df = st.session_state.manual_df.copy()
 pac_df = st.session_state.pac_df.copy()
+performance_df = normalize_performance_df(st.session_state.performance_df.copy())
 
 all_assets = assets_df["name"].tolist()
 etf_assets = assets_df.loc[assets_df["category"] == "ETF", "name"].tolist()
@@ -884,6 +906,7 @@ manual_map = manual_df.groupby(["month", "asset"], dropna=False)["amount"].sum()
 pac_effective = pac_df.copy()
 pac_effective["effective_amount"] = pac_effective.apply(lambda r: 0 if r["mode"] == "No" else float(r["amount"]), axis=1)
 pac_map = pac_effective.groupby(["month", "asset"])["effective_amount"].sum().to_dict() if not pac_effective.empty else {}
+performance_map = performance_df.groupby(["month", "asset"], dropna=False)["performance"].last().to_dict() if not performance_df.empty else {}
 
 selected_idx = MONTHS.index(selected_month)
 prev_month = MONTHS[selected_idx - 1] if selected_idx > 0 else None
@@ -1178,7 +1201,7 @@ if not trend_df.empty:
 
 perf_mode = st.radio(
     "ETF monthly metric",
-    ["Position value change", "Flow-adjusted estimate"],
+    ["Official ETF performance", "Flow-adjusted estimate", "Position value change"],
     horizontal=True,
     label_visibility="collapsed",
     index=0,
@@ -1186,12 +1209,17 @@ perf_mode = st.radio(
 
 
 def calc_selected_month_metric(asset, month):
+    if perf_mode == "Official ETF performance":
+        value = performance_map.get((month, asset))
+        return None if value is None or pd.isna(value) else float(value)
     if perf_mode == "Flow-adjusted estimate":
         return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
     return calc_month_value_change(asset, month, month_end_map)
 
 
 def selected_metric_label():
+    if perf_mode == "Official ETF performance":
+        return "official performance"
     if perf_mode == "Flow-adjusted estimate":
         return "flow-adjusted estimate"
     return "position value"
@@ -1226,8 +1254,8 @@ for asset in etf_assets:
 etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] is None else x["current_perf"], reverse=True)
 
 with left_perf_col:
-    st.subheader("ETF Monthly Position Move")
-    st.caption("This is not broker performance. Use it for portfolio value movement; true ETF returns need broker return data or month-end prices/units.")
+    st.subheader("ETF Monthly Performance")
+    st.caption("Default uses manually entered ETF performance, excluding your buys/sells. Estimates and position value are only control views.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1321,7 +1349,7 @@ with left_perf_col:
                 )
                 st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
             else:
-                st.caption("No 5M data")
+                st.caption("No performance data")
 
 with right_track_col:
     st.subheader("MoM ETF Track")
@@ -1391,8 +1419,8 @@ with right_track_col:
 
 st.divider()
 
-update_tab, pac_tab, manual_tab, asset_tab = st.tabs(
-    ["Update Month End", "Confirm PAC", "Manual Transaction", "Add ETF"]
+update_tab, pac_tab, perf_tab, manual_tab, asset_tab = st.tabs(
+    ["Update Month End", "Confirm PAC", "ETF Performance", "Manual Transaction", "Add ETF"]
 )
 
 with update_tab:
@@ -1483,6 +1511,41 @@ with pac_tab:
                 st.error(f"Auto-save error: {persist_err}")
             else:
                 st.success(f"PAC saved for {pac_month}")
+                st.rerun()
+
+with perf_tab:
+    st.subheader("ETF performance excluding contributions")
+    st.caption("Enter the broker/monthly ETF return here. These percentages drive the ETF performance charts.")
+    perf_month = st.selectbox("Performance month", options=MONTHS, index=MONTHS.index(_latest_data_month()), key="draft_perf_month")
+    perf_view = performance_df[performance_df["month"] == perf_month].copy()
+    perf_map_for_month = perf_view.set_index("asset")["performance"].to_dict() if not perf_view.empty else {}
+
+    with st.form("performance_form"):
+        perf_updates = []
+        cols = st.columns(3)
+        for i, asset in enumerate(etf_assets):
+            existing_perf = perf_map_for_month.get(asset, 0.0)
+            with cols[i % 3]:
+                value = st.number_input(
+                    asset,
+                    value=float(existing_perf),
+                    step=0.10,
+                    format="%.2f",
+                    key=f"perf_{perf_month}_{asset}",
+                )
+                perf_updates.append({"month": perf_month, "asset": asset, "performance": float(value)})
+
+        save_perf = st.form_submit_button("Save ETF performance", use_container_width=True)
+        if save_perf:
+            new_perf = st.session_state.performance_df[st.session_state.performance_df["month"] != perf_month].copy()
+            new_perf = pd.concat([new_perf, pd.DataFrame(perf_updates)], ignore_index=True)
+            st.session_state.performance_df = normalize_performance_df(new_perf)
+            st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
+            persist_err = persist_state()
+            if persist_err:
+                st.error(f"Auto-save error: {persist_err}")
+            else:
+                st.success(f"ETF performance saved for {perf_month}")
                 st.rerun()
 
 with manual_tab:
