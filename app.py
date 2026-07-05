@@ -442,6 +442,19 @@ def calc_month_value_change(asset, month, month_end_map):
     return None
 
 
+def calc_month_net_move(asset, month, month_end_map, pac_map, manual_map):
+    idx = MONTHS.index(month)
+    if idx == 0:
+        return None
+    prev = MONTHS[idx - 1]
+    end = month_end_map.get((month, asset), 0)
+    prev_end = month_end_map.get((prev, asset), 0)
+    flow = pac_map.get((month, asset), 0) + manual_map.get((month, asset), 0)
+    if end > 0 or prev_end > 0 or flow != 0:
+        return end - prev_end - flow
+    return None
+
+
 def state_payload(backup_ts=None):
     return {
         "assets": st.session_state.assets_df.to_dict(orient="records"),
@@ -1165,16 +1178,23 @@ if not trend_df.empty:
 
 perf_mode = st.radio(
     "ETF monthly metric",
-    ["Value change", "Flow-adjusted approx"],
+    ["Estimated market move", "Position value change"],
     horizontal=True,
     label_visibility="collapsed",
+    index=0,
 )
 
 
 def calc_selected_month_metric(asset, month):
-    if perf_mode == "Flow-adjusted approx":
+    if perf_mode == "Estimated market move":
         return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
     return calc_month_value_change(asset, month, month_end_map)
+
+
+def selected_metric_label():
+    if perf_mode == "Estimated market move":
+        return "estimated"
+    return "value"
 
 
 left_perf_col, right_track_col = st.columns([0.52, 0.48], vertical_alignment="top")
@@ -1207,7 +1227,7 @@ etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] 
 
 with left_perf_col:
     st.subheader("ETF Monthly Move")
-    st.caption("Value change by default. Flow-adjusted mode subtracts monthly buys/sells.")
+    st.caption("Estimated mode subtracts PAC and manual buys/sells from month-end values. It is not the broker's official return.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1231,22 +1251,27 @@ with left_perf_col:
         with outer2:
             perf_cls = "etf-perf-na"
             perf_text = "-"
+            move_text = ""
             if current_perf is not None:
                 perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
                 perf_text = f"{perf_arrow(current_perf)} {pct1(current_perf)}"
+                net_move = calc_month_net_move(asset, selected_month, month_end_map, pac_map, manual_map)
+                if perf_mode == "Estimated market move" and net_move is not None:
+                    move_text = f"<div class=\"etf-perf-head\">{eur0(net_move)}</div>"
 
             st.markdown(
                 f"""
                 <div class="etf-row-card" style="height:62px; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:6px 10px; text-align:center;">
                     <div class="etf-perf-head">{selected_month}</div>
                     <div class="{perf_cls}">{perf_text}</div>
+                    {move_text}
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
         with outer3:
-            st.markdown('<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">Sparkline last 5 months</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">{selected_metric_label().title()} move, last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 fig_spark = go.Figure()
                 xs = list(range(len(spark_months)))
@@ -1300,6 +1325,7 @@ with left_perf_col:
 
 with right_track_col:
     st.subheader("MoM ETF Track")
+    st.caption(f"Showing {perf_mode.lower()} by month.")
 
     months_with_data = [m for m in MONTHS if any(month_end_map.get((m, a), 0) > 0 for a in etf_assets)]
 
@@ -1346,13 +1372,17 @@ with right_track_col:
     mom_df = pd.DataFrame(mom_data)
     if not mom_df.empty:
         fig_track = px.line(mom_df, x="Month", y="Perf", color="Asset", markers=True)
-        fig_track.update_traces(line=dict(width=2.4, shape="linear"), marker=dict(size=5))
+        fig_track.update_traces(
+            line=dict(width=2.4, shape="linear"),
+            marker=dict(size=5),
+            hovertemplate="%{fullData.name}<br>%{x}: %{y:.2f}%<extra></extra>",
+        )
         fig_track.update_layout(
             height=430,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.02)",
-            yaxis_title="%",
+            yaxis_title=f"{selected_metric_label().title()} %",
             xaxis_title="",
             legend=dict(orientation="h", y=-0.10, x=0),
         )
