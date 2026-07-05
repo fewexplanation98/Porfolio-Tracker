@@ -1178,7 +1178,7 @@ if not trend_df.empty:
 
 perf_mode = st.radio(
     "ETF monthly metric",
-    ["Estimated market move", "Position value change"],
+    ["Position value change", "Flow-adjusted estimate"],
     horizontal=True,
     label_visibility="collapsed",
     index=0,
@@ -1186,15 +1186,15 @@ perf_mode = st.radio(
 
 
 def calc_selected_month_metric(asset, month):
-    if perf_mode == "Estimated market move":
+    if perf_mode == "Flow-adjusted estimate":
         return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
     return calc_month_value_change(asset, month, month_end_map)
 
 
 def selected_metric_label():
-    if perf_mode == "Estimated market move":
-        return "estimated"
-    return "value"
+    if perf_mode == "Flow-adjusted estimate":
+        return "flow-adjusted estimate"
+    return "position value"
 
 
 left_perf_col, right_track_col = st.columns([0.52, 0.48], vertical_alignment="top")
@@ -1226,8 +1226,8 @@ for asset in etf_assets:
 etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] is None else x["current_perf"], reverse=True)
 
 with left_perf_col:
-    st.subheader("ETF Monthly Move")
-    st.caption("Estimated mode subtracts PAC and manual buys/sells from month-end values. It is not the broker's official return.")
+    st.subheader("ETF Monthly Position Move")
+    st.caption("This is not broker performance. Use it for portfolio value movement; true ETF returns need broker return data or month-end prices/units.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1256,7 +1256,7 @@ with left_perf_col:
                 perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
                 perf_text = f"{perf_arrow(current_perf)} {pct1(current_perf)}"
                 net_move = calc_month_net_move(asset, selected_month, month_end_map, pac_map, manual_map)
-                if perf_mode == "Estimated market move" and net_move is not None:
+                if perf_mode == "Flow-adjusted estimate" and net_move is not None:
                     move_text = f"<div class=\"etf-perf-head\">{eur0(net_move)}</div>"
 
             st.markdown(
