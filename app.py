@@ -438,9 +438,9 @@ def calc_month_perf(asset, month, month_end_map, pac_map, manual_map):
     flow = pac_map.get((month, asset), 0) + manual_map.get((month, asset), 0)
     if prev_end > 0 and end > 0:
         pnl = end - prev_end - flow
-        base = prev_end + flow / 2
-        if base != 0:
-            return pnl / base * 100
+        return pnl / prev_end * 100
+    if prev_end == 0 and end > 0 and flow != 0:
+        return (end - flow) / abs(flow) * 100
     return None
 
 
@@ -1201,7 +1201,7 @@ if not trend_df.empty:
 
 perf_mode = st.radio(
     "ETF monthly metric",
-    ["Official ETF performance", "Flow-adjusted estimate", "Position value change"],
+    ["Performance excl. contributions", "Position value change"],
     horizontal=True,
     label_visibility="collapsed",
     index=0,
@@ -1209,19 +1209,14 @@ perf_mode = st.radio(
 
 
 def calc_selected_month_metric(asset, month):
-    if perf_mode == "Official ETF performance":
-        value = performance_map.get((month, asset))
-        return None if value is None or pd.isna(value) else float(value)
-    if perf_mode == "Flow-adjusted estimate":
+    if perf_mode == "Performance excl. contributions":
         return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
     return calc_month_value_change(asset, month, month_end_map)
 
 
 def selected_metric_label():
-    if perf_mode == "Official ETF performance":
-        return "official performance"
-    if perf_mode == "Flow-adjusted estimate":
-        return "flow-adjusted estimate"
+    if perf_mode == "Performance excl. contributions":
+        return "performance excl. contributions"
     return "position value"
 
 
@@ -1255,7 +1250,7 @@ etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] 
 
 with left_perf_col:
     st.subheader("ETF Monthly Performance")
-    st.caption("Default uses manually entered ETF performance, excluding your buys/sells. Estimates and position value are only control views.")
+    st.caption("Calculated from previous month value, current month buys/sells, and current month-end value.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1284,7 +1279,7 @@ with left_perf_col:
                 perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
                 perf_text = f"{perf_arrow(current_perf)} {pct1(current_perf)}"
                 net_move = calc_month_net_move(asset, selected_month, month_end_map, pac_map, manual_map)
-                if perf_mode == "Flow-adjusted estimate" and net_move is not None:
+                if perf_mode == "Performance excl. contributions" and net_move is not None:
                     move_text = f"<div class=\"etf-perf-head\">{eur0(net_move)}</div>"
 
             st.markdown(
@@ -1419,8 +1414,8 @@ with right_track_col:
 
 st.divider()
 
-update_tab, pac_tab, perf_tab, manual_tab, asset_tab = st.tabs(
-    ["Update Month End", "Confirm PAC", "ETF Performance", "Manual Transaction", "Add ETF"]
+update_tab, pac_tab, manual_tab, asset_tab = st.tabs(
+    ["Update Month End", "Confirm PAC", "Manual Transaction", "Add ETF"]
 )
 
 with update_tab:
@@ -1511,41 +1506,6 @@ with pac_tab:
                 st.error(f"Auto-save error: {persist_err}")
             else:
                 st.success(f"PAC saved for {pac_month}")
-                st.rerun()
-
-with perf_tab:
-    st.subheader("ETF performance excluding contributions")
-    st.caption("Enter the broker/monthly ETF return here. These percentages drive the ETF performance charts.")
-    perf_month = st.selectbox("Performance month", options=MONTHS, index=MONTHS.index(_latest_data_month()), key="draft_perf_month")
-    perf_view = performance_df[performance_df["month"] == perf_month].copy()
-    perf_map_for_month = perf_view.set_index("asset")["performance"].to_dict() if not perf_view.empty else {}
-
-    with st.form("performance_form"):
-        perf_updates = []
-        cols = st.columns(3)
-        for i, asset in enumerate(etf_assets):
-            existing_perf = perf_map_for_month.get(asset, 0.0)
-            with cols[i % 3]:
-                value = st.number_input(
-                    asset,
-                    value=float(existing_perf),
-                    step=0.10,
-                    format="%.2f",
-                    key=f"perf_{perf_month}_{asset}",
-                )
-                perf_updates.append({"month": perf_month, "asset": asset, "performance": float(value)})
-
-        save_perf = st.form_submit_button("Save ETF performance", use_container_width=True)
-        if save_perf:
-            new_perf = st.session_state.performance_df[st.session_state.performance_df["month"] != perf_month].copy()
-            new_perf = pd.concat([new_perf, pd.DataFrame(perf_updates)], ignore_index=True)
-            st.session_state.performance_df = normalize_performance_df(new_perf)
-            st.session_state.last_modified_ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M")
-            persist_err = persist_state()
-            if persist_err:
-                st.error(f"Auto-save error: {persist_err}")
-            else:
-                st.success(f"ETF performance saved for {perf_month}")
                 st.rerun()
 
 with manual_tab:
