@@ -1201,7 +1201,7 @@ if not trend_df.empty:
 
 perf_mode = st.radio(
     "ETF monthly metric",
-    ["Performance excl. contributions", "Position value change"],
+    ["Position move excl. contributions", "Position value change"],
     horizontal=True,
     label_visibility="collapsed",
     index=0,
@@ -1209,14 +1209,14 @@ perf_mode = st.radio(
 
 
 def calc_selected_month_metric(asset, month):
-    if perf_mode == "Performance excl. contributions":
+    if perf_mode == "Position move excl. contributions":
         return calc_month_perf(asset, month, month_end_map, pac_map, manual_map)
     return calc_month_value_change(asset, month, month_end_map)
 
 
 def selected_metric_label():
-    if perf_mode == "Performance excl. contributions":
-        return "performance excl. contributions"
+    if perf_mode == "Position move excl. contributions":
+        return "position move excl. contributions"
     return "position value"
 
 
@@ -1249,8 +1249,8 @@ for asset in etf_assets:
 etf_perf_table = sorted(etf_perf_table, key=lambda x: -999 if x["current_perf"] is None else x["current_perf"], reverse=True)
 
 with left_perf_col:
-    st.subheader("ETF Monthly Performance")
-    st.caption("Calculated from previous month value, current month buys/sells, and current month-end value.")
+    st.subheader("ETF Position Move")
+    st.caption("Calculated from previous month value, current month buys/sells, and current month-end value. This is not the fund price return.")
 
     for row in etf_perf_table:
         asset = row["asset"]
@@ -1279,7 +1279,7 @@ with left_perf_col:
                 perf_cls = "etf-perf-pos" if current_perf >= 0 else "etf-perf-neg"
                 perf_text = f"{perf_arrow(current_perf)} {pct1(current_perf)}"
                 net_move = calc_month_net_move(asset, selected_month, month_end_map, pac_map, manual_map)
-                if perf_mode == "Performance excl. contributions" and net_move is not None:
+                if perf_mode == "Position move excl. contributions" and net_move is not None:
                     move_text = f"<div class=\"etf-perf-head\">{eur0(net_move)}</div>"
 
             st.markdown(
