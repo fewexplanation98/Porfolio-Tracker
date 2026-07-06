@@ -1294,51 +1294,22 @@ with left_perf_col:
             )
 
         with outer3:
-            st.markdown(f'<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">{selected_metric_label().title()} move, last 5 months</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">{selected_metric_label().title()} %, last 5 months</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 fig_spark = go.Figure()
-                xs = list(range(len(spark_months)))
-                ys = spark_vals
-
-                def interp_zero(x0, y0, x1, y1):
-                    return x0 + y0 * (x1 - x0) / (y0 - y1)
-
-                pts = []
-                for i in range(len(xs)):
-                    pts.append((xs[i], ys[i]))
-                    if i < len(xs) - 1:
-                        y0, y1 = ys[i], ys[i + 1]
-                        if (y0 > 0 and y1 < 0) or (y0 < 0 and y1 > 0):
-                            zx = interp_zero(xs[i], y0, xs[i + 1], y1)
-                            pts.append((zx, 0.0))
-
-                px_all = [p[0] for p in pts]
-                py_all = [p[1] for p in pts]
-
-                fig_spark.add_trace(go.Scatter(
-                    x=px_all, y=[max(v, 0) for v in py_all],
-                    mode="none", fill="tozeroy",
-                    fillcolor="rgba(34,197,94,0.35)",
-                    showlegend=False, hoverinfo="skip"
-                ))
-                fig_spark.add_trace(go.Scatter(
-                    x=px_all, y=[min(v, 0) for v in py_all],
-                    mode="none", fill="tozeroy",
-                    fillcolor="rgba(239,68,68,0.28)",
-                    showlegend=False, hoverinfo="skip"
-                ))
-                fig_spark.add_trace(go.Scatter(
-                    x=xs, y=ys,
-                    mode="lines+markers",
-                    line=dict(color="#e2e8f0", width=1.8, shape="linear"),
-                    marker=dict(size=3.5, color="#e2e8f0", symbol="circle"),
+                fig_spark.add_trace(go.Bar(
+                    x=spark_months,
+                    y=spark_vals,
+                    marker_color=["#22c55e" if v >= 0 else "#ef4444" for v in spark_vals],
+                    width=0.58,
                     showlegend=False,
+                    hovertemplate="%{x}: %{y:.2f}%<extra></extra>",
                 ))
                 fig_spark.update_layout(
                     height=62,
                     margin=dict(l=0, r=0, t=0, b=0),
                     xaxis=dict(visible=False),
-                    yaxis=dict(visible=False, zeroline=False),
+                    yaxis=dict(visible=False, zeroline=True, zerolinecolor="rgba(226,232,240,0.45)", zerolinewidth=1),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
                 )
