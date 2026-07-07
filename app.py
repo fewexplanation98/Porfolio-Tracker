@@ -924,9 +924,7 @@ for _, asset_row in assets_df.iterrows():
     perf_pct = None
     if end_value != 0 and prev_end != 0:
         pnl = end_value - prev_end - total_flow
-        base = prev_end + total_flow / 2
-        if base != 0:
-            perf_pct = pnl / base * 100
+        perf_pct = pnl / prev_end * 100
 
     rows.append({
         "Asset": asset,
@@ -954,7 +952,7 @@ etf_prev_end = float(summary_df.loc[summary_df["Category"] == "ETF", "Prev End"]
 etf_total_flow = float(summary_df.loc[summary_df["Category"] == "ETF", "Total Flow"].sum())
 etf_perf_pct = None
 if etf_prev_end > 0:
-    etf_perf_pct = etf_abs_perf / (etf_prev_end + etf_total_flow / 2) * 100
+    etf_perf_pct = etf_abs_perf / etf_prev_end * 100
 
 
 def render_kpi(col, title, value, tone="default"):
