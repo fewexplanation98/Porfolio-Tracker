@@ -854,25 +854,35 @@ div[data-baseweb="tag"] {
     letter-spacing: 0.04em;
     color: #94a3b8;
     text-align: center;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+}
+.etf-perf-move {
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1;
 }
 .etf-perf-pos {
     font-size: 18px;
     font-weight: 700;
     color: #22c55e;
     text-align: center;
+    line-height: 1;
 }
 .etf-perf-neg {
     font-size: 18px;
     font-weight: 700;
     color: #ef4444;
     text-align: center;
+    line-height: 1;
 }
 .etf-perf-na {
     font-size: 18px;
     font-weight: 700;
     color: #94a3b8;
     text-align: center;
+    line-height: 1;
 }
 .spark-head {
     font-size: 10px;
@@ -1278,11 +1288,11 @@ with left_perf_col:
                 perf_text = f"{perf_arrow(current_perf)} {pct1(current_perf)}"
                 net_move = calc_month_net_move(asset, selected_month, month_end_map, pac_map, manual_map)
                 if perf_mode == "Position move excl. contributions" and net_move is not None:
-                    move_text = f"<div class=\"etf-perf-head\">{eur0(net_move)}</div>"
+                    move_text = f"<div class=\"etf-perf-move\">{eur0(net_move)}</div>"
 
             st.markdown(
                 f"""
-                <div class="etf-row-card" style="height:62px; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:6px 10px; text-align:center;">
+                <div class="etf-row-card" style="height:74px; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:7px 10px; text-align:center;">
                     <div class="etf-perf-head">{selected_month}</div>
                     <div class="{perf_cls}">{perf_text}</div>
                     {move_text}
@@ -1292,7 +1302,7 @@ with left_perf_col:
             )
 
         with outer3:
-            st.markdown(f'<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">{selected_metric_label().title()} %, last 5 months</div>', unsafe_allow_html=True)
+            st.markdown('<div class="spark-head" style="margin-bottom:2px; margin-top:2px;">Performance last 5 months %</div>', unsafe_allow_html=True)
             if len(spark_vals) >= 2:
                 fig_spark = go.Figure()
                 fig_spark.add_trace(go.Bar(
