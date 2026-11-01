@@ -477,6 +477,7 @@ def state_payload(backup_ts=None):
         "pac": st.session_state.pac_df.to_dict(orient="records"),
         "etf_performance": st.session_state.performance_df.to_dict(orient="records"),
         "backup_ts": backup_ts,
+        "applied_updates": list(st.session_state.get("applied_updates", [])),
     }
 
 
@@ -488,6 +489,7 @@ def state_to_json() -> str:
 
 
 def apply_state_payload(data):
+    st.session_state.applied_updates = list(data.get("applied_updates", []))
     assets_df = pd.DataFrame(data["assets"])
     month_end_df = pd.DataFrame(data["month_end"])
     manual_df = pd.DataFrame(data["manual"])
@@ -714,6 +716,52 @@ if "data_source" not in st.session_state:
     st.session_state.data_source = GOOGLE_STATE_WORKSHEET if get_storage_backend() == "google_sheets" else (STATE_FILE.name if STATE_FILE.exists() else "seed_data")
 if "init_load_error" not in st.session_state:
     st.session_state.init_load_error = None
+
+
+def apply_october_2026_update():
+    """Import the supplied October closing values once, preserving other state."""
+    update_id = "october-2026-user-snapshot-v1"
+    applied = list(st.session_state.get("applied_updates", []))
+    if update_id in applied:
+        return None
+    # Do not save fallback data over a backend that failed to load.
+    if st.session_state.get("init_load_error"):
+        return "October update postponed: resolve the initial storage load error first."
+    values = {
+        "Savings": 35053.17,
+        "Core MSCI World": 23583.00,
+        "AI & Big Data": 5727.00,
+        "MSCI World Value": 4939.00,
+        "MSCI EM": 3872.00,
+        "Physical Gold": 2903.00,
+        "Core EUR Corp Bond": 2054.00,
+        "Euro Inflation Linked Gov Bond": 991.81,
+        "Global Gov Bond": 852.16,
+        "Defence Tech": 697.20,
+    }
+    unknown = set(values) - set(st.session_state.assets_df["name"])
+    if unknown:
+        return f"October update postponed: missing assets {sorted(unknown)}."
+    previous = st.session_state.month_end_df.copy()
+    keep = ~((previous["month"] == "Oct/26") & previous["asset"].isin(values))
+    rows = pd.DataFrame(
+        [{"month": "Oct/26", "asset": asset, "value": value}
+         for asset, value in values.items()]
+    )
+    st.session_state.month_end_df = pd.concat([previous.loc[keep], rows], ignore_index=True)
+    st.session_state.applied_updates = applied + [update_id]
+    error = persist_state()
+    if error:
+        st.session_state.month_end_df = previous
+        st.session_state.applied_updates = applied
+        return f"October update could not be saved: {error}"
+    return None
+
+
+october_update_error = apply_october_2026_update()
+if october_update_error:
+    st.error(october_update_error)
+    st.stop()
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
